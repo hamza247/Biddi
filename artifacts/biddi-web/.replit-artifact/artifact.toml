@@ -1,0 +1,26 @@
+kind = "web"
+previewPath = "/"
+title = "BiddiRides"
+version = "1.0.0"
+id = "artifacts/biddi-web"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21137
+
+[services.development]
+run = "pnpm --filter @workspace/biddi-web run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/biddi-web", "run", "build" ]
+run = [ "node", "artifacts/biddi-web/serve.mjs" ]
+
+[services.env]
+PORT = "21137"
+BASE_PATH = "/"

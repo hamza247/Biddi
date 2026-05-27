@@ -1,0 +1,2 @@
+ALTER TABLE "trip_messages" ADD COLUMN "client_id" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "trip_messages_sender_client_id_unique" ON "trip_messages" USING btree ("trip_id","sender_id","client_id");

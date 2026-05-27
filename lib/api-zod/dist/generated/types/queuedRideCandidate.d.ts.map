@@ -1,0 +1,1 @@
+{"version":3,"file":"queuedRideCandidate.d.ts","sourceRoot":"","sources":["../../../src/generated/types/queuedRideCandidate.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AAEH,MAAM,WAAW,mBAAmB;IAClC,MAAM,EAAE,MAAM,CAAC;IACf,SAAS,EAAE,MAAM,CAAC;IAClB,aAAa,EAAE,MAAM,CAAC;IACtB,4BAA4B,EAAE,MAAM,CAAC;IACrC,aAAa,EAAE,MAAM,CAAC;IACtB,WAAW,EAAE,MAAM,CAAC;CACrB"}

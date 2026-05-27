@@ -1,0 +1,198 @@
+Build Driver Destination Mode.
+
+Goal:
+Allow a driver to set a destination address, then only receive ride requests that are going toward that destination or near that destination.
+
+Example:
+Driver sets destination: “Home — S Michigan Ave”
+System should prioritize/filter requests where the rider’s dropoff is near the driver’s chosen destination or along the route toward it.
+
+Important:
+- Do NOT rebuild the app.
+- Do NOT break normal ride request flow.
+- Destination Mode must be optional.
+- Driver can turn it ON/OFF.
+- Keep code clean, simple, and optimized.
+
+Core Features:
+
+1. Driver App UI
+Create Destination Mode screen like the reference:
+- Search for places input
+- Destination Mode toggle
+- Show remaining filters, example: “2/2 filters left”
+- Saved places:
+  - Home
+  - Work
+  - Recent addresses
+- Nearby places shortcuts optional:
+  - Restrooms
+  - Food
+  - Gas
+  - Chargers
+- View map option
+- Clear destination option
+
+2. Destination Mode Settings
+Driver can:
+- Turn destination mode ON
+- Enter/select destination address
+- Save destination as Home/Work
+- Turn destination mode OFF
+- See how many destination filters are left today
+
+3. Admin Settings
+Add admin settings:
+- Enable Destination Mode: Yes/No
+- Max destination filters per driver per day: default 2
+- Destination match radius: default 5 km
+- Route corridor tolerance: default 3 km
+- Auto-disable after completed destination trip: Yes/No
+- Auto-disable after time limit: optional
+
+4. Database
+Create or reuse tables:
+
+driver_destination_modes:
+- id
+- driver_id
+- destination_address
+- destination_lat
+- destination_lng
+- is_active
+- filters_used_today
+- max_filters_per_day
+- activated_at
+- expires_at
+- created_at
+- updated_at
+
+driver_saved_places:
+- id
+- driver_id
+- label: home/work/custom
+- address
+- lat
+- lng
+- created_at
+- updated_at
+
+5. Backend APIs
+Create endpoints:
+
+GET /api/driver/destination-mode
+POST /api/driver/destination-mode/activate
+POST /api/driver/destination-mode/deactivate
+POST /api/driver/saved-places
+GET /api/driver/saved-places
+DELETE /api/driver/saved-places/:id
+
+Activate request:
+{
+  "destinationAddress": "...",
+  "destinationLat": 41.8781,
+  "destinationLng": -87.6298
+}
+
+6. Matching Logic
+When driver has destination mode ON:
+
+Only send ride requests that match one of these:
+
+A. Dropoff Near Destination
+- Rider dropoff is within destination match radius.
+Example:
+driver destination = Home
+ride dropoff is within 5 km of Home
+
+B. Along Route
+- Ride pickup/dropoff is generally along the route from driver current location to destination.
+Use route corridor tolerance if route API exists.
+If route API does not exist, use simple bearing/distance fallback.
+
+Helper functions:
+- isDropoffNearDestination(rideDropoff, driverDestination, radiusKm)
+- isRideGoingTowardDestination(driverLocation, ridePickup, rideDropoff, destination)
+- canDriverUseDestinationFilter(driverId)
+- incrementDestinationFilterUsage(driverId)
+
+7. Ride Request Flow
+If destination mode is OFF:
+- Driver receives normal ride requests.
+
+If destination mode is ON:
+- Filter requests before sending to driver.
+- Only matching requests are sent.
+- Non-matching requests are skipped for this driver.
+- Driver can still manually turn off destination mode.
+
+8. Usage Limit
+Example:
+Driver has 2 destination filters per day.
+
+Rules:
+- Count one filter when driver activates destination mode.
+- Do not count again if driver only edits same active destination within short time.
+- Reset count daily.
+- If limit reached, show:
+  “You used all destination filters for today.”
+
+9. Driver App UI States
+Show:
+- “Not filtering trips” when off
+- “Filtering trips toward [destination]” when on
+- “2/2 filters left”
+- “0/2 filters left”
+- Error if no filters left
+- Loading when activating
+- Success toast after activation
+- Clear/off button
+
+10. Edge Cases
+Handle:
+- Driver has no current location
+- Invalid address
+- Geocoding fails
+- No filters left
+- Destination mode disabled by admin
+- Driver goes offline
+- Driver accepts a ride
+- Driver completes ride
+- Driver cancels ride
+- App restarts
+- Location changes
+- Network error
+
+11. Testing
+Test:
+1. Driver turns Destination Mode ON.
+2. Driver selects Home address.
+3. Filters left decreases correctly.
+4. Driver receives only rides going near destination.
+5. Driver does not receive rides going opposite direction.
+6. Driver turns mode OFF and receives normal requests.
+7. Limit resets daily.
+8. App restart keeps active destination mode.
+9. Admin can disable feature.
+10. Existing ride request flow still works.
+
+12. Code Quality
+- Keep logic modular.
+- No heavy frontend calculations.
+- Backend should decide request matching.
+- Use indexes for driver_id and is_active.
+- No duplicated matching logic.
+- Clean validation.
+- Clear error messages.
+- No console spam.
+
+Final Report:
+After finishing provide:
+- Files changed
+- DB changes
+- API routes
+- Matching logic explanation
+- Driver UI changes
+- Admin settings added
+- Tests completed
+- Known limitations

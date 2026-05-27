@@ -1,0 +1,1 @@
+{"version":3,"file":"referralEarningsListResponse.d.ts","sourceRoot":"","sources":["../../../src/generated/types/referralEarningsListResponse.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,eAAe,EAAE,MAAM,mBAAmB,CAAC;AAEzD,MAAM,WAAW,4BAA4B;IAC3C,QAAQ,EAAE,eAAe,EAAE,CAAC;IAC5B,KAAK,EAAE,MAAM,CAAC;IACd,WAAW,EAAE,MAAM,CAAC;CACrB"}

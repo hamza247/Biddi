@@ -1,0 +1,269 @@
+Rebuild and fix the in-app chat messaging system for Biddi.
+
+Goal:
+Create a WhatsApp-like real-time chat between rider/customer and driver with text, images, voice messages, typing animation, read/unread sync, and unread badge on the chat icon.
+
+Important:
+- Do NOT rebuild the whole app.
+- Do NOT break existing ride flow.
+- Use existing user, driver, trip, booking, and notification systems.
+- Keep code clean, simple, optimized, and production-ready.
+- Real-time sync is required.
+
+Core features:
+
+1. Chat Conversations
+Create chat per trip/booking between:
+- Rider/customer
+- Driver
+
+Each conversation should belong to:
+- trip_id / booking_id
+- rider_id
+- driver_id
+
+2. Message Types
+Support:
+- Text messages
+- Image messages
+- Voice/audio messages
+
+Message fields:
+- id
+- conversation_id
+- sender_type: user / driver
+- sender_id
+- message_type: text / image / audio
+- body
+- media_url
+- audio_duration
+- read_at
+- delivered_at
+- created_at
+
+3. Database
+Create or update tables:
+
+chat_conversations:
+- id
+- trip_id
+- rider_id
+- driver_id
+- last_message
+- last_message_type
+- last_message_at
+- created_at
+- updated_at
+
+chat_messages:
+- id
+- conversation_id
+- sender_type
+- sender_id
+- message_type
+- body
+- media_url
+- audio_duration
+- delivered_at
+- read_at
+- created_at
+
+Indexes:
+- conversation_id
+- trip_id
+- rider_id
+- driver_id
+- created_at
+
+4. Backend APIs
+Create endpoints:
+- GET /api/chat/conversations
+- GET /api/chat/conversations/:id/messages
+- POST /api/chat/conversations/:id/messages
+- POST /api/chat/conversations/:id/upload-image
+- POST /api/chat/conversations/:id/upload-audio
+- POST /api/chat/conversations/:id/mark-read
+
+Validation:
+- Only rider or driver assigned to the trip can access the chat.
+- Message cannot be empty unless media exists.
+- Validate image/audio file size and type.
+- Block unauthorized users.
+
+5. Real-Time Sync with Socket.IO
+Implement WhatsApp-like sync.
+
+Socket events:
+- chat:join
+- chat:leave
+- chat:message:new
+- chat:message:delivered
+- chat:message:read
+- chat:typing:start
+- chat:typing:stop
+- chat:unread:update
+
+Behavior:
+- When user opens chat, join conversation room.
+- When message is sent, save to DB first, then emit to receiver.
+- Receiver gets message instantly.
+- Sender UI updates instantly.
+- Mark delivered when receiver device receives it.
+- Mark read when receiver opens conversation.
+- Unread badge updates instantly.
+- Clean up socket listeners on unmount.
+
+6. Typing Indicator
+Add animated typing state:
+- “Driver is typing…”
+- “Customer is typing…”
+
+Rules:
+- Emit typing:start when typing begins.
+- Emit typing:stop after 1.5–2 seconds of inactivity.
+- Stop typing when message is sent.
+- Show animation with 3 moving dots.
+- Do not spam socket events.
+
+7. Voice Messages
+Driver/customer can:
+- Record audio
+- Preview before sending
+- Send audio message
+- Play/pause audio message
+- See duration
+- Show upload progress
+
+Use existing audio library if available.
+If not available, use a lightweight compatible package.
+
+Validation:
+- Max audio length configurable, example 2 minutes.
+- Max audio file size configurable.
+- Store audio securely.
+
+8. Image Messages
+Driver/customer can:
+- Pick image from gallery
+- Take photo if supported
+- Preview before sending
+- Send image
+- Tap image to view full screen
+- Show upload progress
+
+Validation:
+- Compress image if needed.
+- Max file size configurable.
+- Allowed types: jpg, jpeg, png, webp.
+
+9. Unread Badge
+Add unread message count badge on chat icon.
+
+Behavior:
+- Show small popup/badge on chat icon.
+- Example: red circle with number 1, 2, 3.
+- Hide badge when count is 0.
+- Update badge in real time.
+- Badge count should include unread messages for current active trip/chat.
+
+Backend endpoint:
+GET /api/chat/unread-count
+
+Socket:
+Emit chat:unread:update when unread count changes.
+
+10. Offline / Sync Handling
+Handle:
+- Socket disconnected
+- Network error
+- App background/foreground
+- Message sent while connection slow
+- Duplicate message prevention
+
+Use optimistic UI:
+- Show message immediately as “sending”
+- Change to “sent” after API success
+- Change to “delivered/read” from socket events
+- If failed, show retry button
+
+11. UI/UX
+Chat screen:
+- Message bubbles
+- Different color for sender/receiver
+- Timestamp
+- Sent/delivered/read indicator
+- Image bubble
+- Audio bubble with play button
+- Typing animation
+- Input bar
+- Image button
+- Voice record button
+- Send button
+- Loading older messages
+- Empty state
+
+Unread badge:
+- Small clean badge on chat icon
+- Must not block clicks
+- Mobile responsive
+
+12. Push Notifications
+If receiver is offline:
+- Send push notification:
+  “New message from your driver”
+  or
+  “New message from your customer”
+
+Do not send push if receiver is currently inside the chat.
+
+13. Security
+- Only trip participants can read/send.
+- Do not expose private media URLs publicly if avoidable.
+- Validate file uploads.
+- Sanitize text messages.
+- Limit message length.
+- Rate-limit message sending.
+
+14. Testing
+Test:
+1. Rider sends text to driver.
+2. Driver receives instantly.
+3. Driver sends text to rider.
+4. Typing indicator appears and disappears.
+5. Image upload works.
+6. Voice recording works.
+7. Audio playback works.
+8. Unread badge increments.
+9. Unread badge clears after opening chat.
+10. Read/delivered status updates.
+11. Socket reconnect sync works.
+12. App restart loads previous messages.
+13. Unauthorized user cannot access chat.
+14. Duplicate messages are not created.
+15. Existing trip flow still works.
+
+15. Code Quality
+After implementation, review:
+- No duplicate socket listeners
+- No memory leaks
+- No broken imports
+- No broken trip screens
+- No fake messages
+- Clean API responses
+- Clean error handling
+- Media upload is safe
+- Unread count is accurate
+- Typing events are debounced
+- Realtime sync works
+
+Final report:
+Provide:
+- Files changed
+- DB changes
+- API routes
+- Socket events
+- Media upload logic
+- Unread badge logic
+- Typing indicator logic
+- Tests completed
+- Known limitations

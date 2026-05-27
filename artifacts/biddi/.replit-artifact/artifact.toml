@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/biddi-app/"
+title = "Biddi"
+version = "1.0.0"
+id = "artifacts/biddi"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/biddi-app/" ]
+localPort = 19684
+
+[services.development]
+run = "pnpm --filter @workspace/biddi run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/biddi", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/biddi", "run", "serve" ]
+
+[services.env]
+PORT = "19684"
+BASE_PATH = "/biddi-app/"

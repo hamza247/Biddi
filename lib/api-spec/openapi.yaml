@@ -1,0 +1,3428 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: Storage
+    description: Object storage upload and serving endpoints.
+  - name: Auth
+    description: Authentication, signup wizard, and password/biometric login.
+  - name: Referrals
+    description: 3-level referral rewards program.
+  - name: NotificationSounds
+    description: Notification sound library, manifest, and active assignments.
+  - name: Heatmap
+    description: Real-time driver demand/surge heatmap.
+  - name: AirportSurcharges
+    description: Admin CRUD for airport zones and per-vehicle airport surcharges.
+  - name: UserSettings
+    description: Per-user preferences such as customised quick-reply chat phrases.
+  - name: Currencies
+    description: Admin currency catalog — list/create/update/delete currencies and choose the platform default.
+  - name: TripChat
+    description: |
+      Real-time in-trip chat between rider and accepted driver. Supports text,
+      image, and voice messages with delivery/read receipts (✓/✓✓/blue ✓✓),
+      typing indicators, and unread badges. Chat is ephemeral — messages are
+      only readable while the trip status is `driver_arriving` or `in_progress`.
+  - name: Bidding
+    description: |
+      inDrive-style bidding flow. Riders post a price for a trip; nearby
+      drivers respond with offers (matching or counter-offering); the rider
+      picks one. Offers age out via the bidding-expiry job, and bidding
+      posts auto-cancel after their deadline if no offer is accepted.
+paths:
+  /rides/{id}/rate-customer:
+    post:
+      tags: [Rides]
+      operationId: rateCustomer
+      summary: Driver rates a rider after a completed trip.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                comment:
+                  type: string
+                  maxLength: 500
+                  nullable: true
+      responses:
+        '200':
+          description: Rating saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ride]
+                properties:
+                  ride: { type: object }
+        '403':
+          description: Caller is not the accepted driver or ride not found.
+        '409':
+          description: Ride not completed or already rated.
+  /drivers/{driverId}/rating-summary:
+    get:
+      tags: [Rides]
+      operationId: getDriverRatingSummary
+      summary: Get a driver's aggregate rating summary.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: driverId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Driver rating summary.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [averageRating, ratingCount]
+                properties:
+                  averageRating: { type: number }
+                  ratingCount: { type: integer, minimum: 0 }
+        '404':
+          description: Driver not found.
+  /users/{userId}/rating-summary:
+    get:
+      tags: [Rides]
+      operationId: getUserRatingSummary
+      summary: Get a user's aggregate customer (rider) rating summary.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Customer rating summary.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [averageRating, ratingCount]
+                properties:
+                  averageRating: { type: number, nullable: true }
+                  ratingCount: { type: integer, minimum: 0 }
+        '404':
+          description: User not found.
+  /admin/airport-locations:
+    get:
+      tags: [AirportSurcharges]
+      operationId: listAirportLocations
+      summary: List configured airport zones (service areas of type airport_surcharge).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of airport zones with center+radius set.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [airports]
+                properties:
+                  airports:
+                    type: array
+                    items: { $ref: '#/components/schemas/AirportLocation' }
+    post:
+      tags: [AirportSurcharges]
+      operationId: createAirportLocation
+      summary: Create a new airport zone.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAirportLocationRequest' }
+      responses:
+        '201':
+          description: Created airport zone.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [airport]
+                properties:
+                  airport: { $ref: '#/components/schemas/AirportLocation' }
+  /admin/airport-surcharges:
+    get:
+      tags: [AirportSurcharges]
+      operationId: listAirportSurcharges
+      summary: List all airport surcharge rules.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of airport surcharges joined with airport + vehicle type names.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [surcharges]
+                properties:
+                  surcharges:
+                    type: array
+                    items: { $ref: '#/components/schemas/AirportSurcharge' }
+    post:
+      tags: [AirportSurcharges]
+      operationId: createAirportSurcharge
+      summary: Create a new airport surcharge for an (airport, vehicle type) pair.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AirportSurchargeInput' }
+      responses:
+        '201':
+          description: Created surcharge.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [surcharge]
+                properties:
+                  surcharge: { $ref: '#/components/schemas/AirportSurcharge' }
+        '409':
+          description: A surcharge for this airport + vehicle type already exists.
+  /admin/airport-surcharges/{id}:
+    get:
+      tags: [AirportSurcharges]
+      operationId: getAirportSurcharge
+      summary: Fetch a single airport surcharge by id.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Single surcharge.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [surcharge]
+                properties:
+                  surcharge: { $ref: '#/components/schemas/AirportSurcharge' }
+        '404':
+          description: Not found.
+    put:
+      tags: [AirportSurcharges]
+      operationId: replaceAirportSurcharge
+      summary: Full replace of an airport surcharge.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AirportSurchargeInput' }
+      responses:
+        '200':
+          description: Updated surcharge.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [surcharge]
+                properties:
+                  surcharge: { $ref: '#/components/schemas/AirportSurcharge' }
+        '404':
+          description: Not found.
+        '409':
+          description: Duplicate airport and vehicle type pair.
+    patch:
+      tags: [AirportSurcharges]
+      operationId: updateAirportSurcharge
+      summary: Partial update of an airport surcharge.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AirportSurchargeInput' }
+      responses:
+        '200':
+          description: Updated surcharge.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [surcharge]
+                properties:
+                  surcharge: { $ref: '#/components/schemas/AirportSurcharge' }
+        '404':
+          description: Not found.
+        '409':
+          description: Duplicate airport and vehicle type pair.
+    delete:
+      tags: [AirportSurcharges]
+      operationId: deleteAirportSurcharge
+      summary: Delete an airport surcharge.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Deletion ack.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+  /admin/airport-surcharges/{id}/status:
+    patch:
+      tags: [AirportSurcharges]
+      operationId: setAirportSurchargeStatus
+      summary: Toggle the active flag of an airport surcharge.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetAirportSurchargeStatusRequest' }
+      responses:
+        '200':
+          description: Updated surcharge.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [surcharge]
+                properties:
+                  surcharge: { $ref: '#/components/schemas/AirportSurcharge' }
+
+  /demand-zones:
+    get:
+      tags: [Heatmap]
+      operationId: getDemandZones
+      summary: Real-time surge demand zones for the driver home heatmap.
+      description: |
+        Snapshot of the latest aggregated demand-vs-supply zones. Updated by a
+        server-side aggregator on a fixed interval (see admin Heatmap settings).
+        The same data is broadcast as diffs over Socket.IO room
+        `drivers:heatmap`. Capped to ~200 zones, ordered by surgeMultiplier
+        descending.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Latest demand-zone snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemandZoneSnapshot'
+
+  /referrals/me:
+    get:
+      tags: [Referrals]
+      operationId: getMyReferrals
+      summary: Get the signed-in user's referral code, totals, and recent earnings.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Referral summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralsMeResponse'
+  /me/referrals:
+    get:
+      tags: [Referrals]
+      operationId: getMyReferralsAlias
+      summary: Alias of GET /referrals/me matching the task contract.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Referral summary.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralsMeResponse'
+  /referrals/tree:
+    get:
+      tags: [Referrals]
+      operationId: getReferralTree
+      summary: Get the 3-level referral tree for a user.
+      description: |
+        Returns the referral tree rooted at the signed-in user (members),
+        or at the user identified by `userId` (admins only). Tree depth is
+        capped at 3 levels.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: userId
+          required: false
+          schema: { type: string, format: uuid }
+          description: Admin-only override. Non-admin callers may only fetch their own tree.
+      responses:
+        '200':
+          description: Referral tree.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralTreeResponse'
+        '401':
+          description: Missing or invalid bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Non-admin tried to read another user's tree.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Target user not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /admin/mlm-report/search:
+    get:
+      tags: [Referrals]
+      operationId: adminSearchMlmReportUsers
+      summary: Search users / drivers as candidates for the root of an MLM report.
+      description: |
+        Lightweight search by name, phone, email, or referral code, scoped to
+        the admin MLM report page. Returns up to 20 matches.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 100 }
+      responses:
+        '200':
+          description: Matched users.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MlmReportSearchResponse'
+  /admin/mlm-report/{userId}:
+    get:
+      tags: [Referrals]
+      operationId: adminGetMlmReport
+      summary: Get a multi-level MLM referral report rooted at a user.
+      description: |
+        Builds a downline tree up to `depth` levels deep (default 3, max 6).
+        Useful for power users who need to audit beyond the standard 3-level
+        commission window.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string, format: uuid }
+        - in: query
+          name: depth
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 6, default: 3 }
+      responses:
+        '200':
+          description: MLM report shape.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MlmReportResponse'
+        '404':
+          description: Root user not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /admin/mlm-report/{userId}/earnings:
+    get:
+      tags: [Referrals]
+      operationId: adminGetMlmReportUserEarnings
+      summary: Per-ride referral earnings for a specific downline member.
+      description: |
+        Returns every referral_earnings row credited to the given user
+        (newest first), so admins can audit which rides drove their earnings
+        from the MLM report drill-down.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Earnings rows for this user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MlmReportUserEarningsResponse'
+        '404':
+          description: User not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /admin/referral-levels:
+    get:
+      tags: [Referrals]
+      operationId: adminListReferralLevels
+      summary: List the configured referral levels.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Configured levels.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [levels]
+                properties:
+                  levels:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ReferralLevel'
+  /admin/referral-levels/{level}:
+    put:
+      tags: [Referrals]
+      operationId: adminUpsertReferralLevel
+      summary: Update one referral level (1, 2 or 3).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: level
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateReferralLevelRequest'
+      responses:
+        '200':
+          description: Updated level.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [level]
+                properties:
+                  level:
+                    $ref: '#/components/schemas/ReferralLevel'
+  /admin/referral-earnings:
+    get:
+      tags: [Referrals]
+      operationId: adminListReferralEarnings
+      summary: List referral earnings with optional date / level / user / ride filters.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+        - in: query
+          name: level
+          schema: { type: integer, minimum: 1, maximum: 3 }
+        - in: query
+          name: userId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: rideId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 500 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: Filtered earnings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralEarningsListResponse'
+  /admin/referral-earnings/summary:
+    get:
+      tags: [Referrals]
+      operationId: adminReferralEarningsSummary
+      summary: Aggregate totals (overall and per level) honoring the same filters as list.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: from
+          schema: { type: string, format: date-time }
+        - in: query
+          name: to
+          schema: { type: string, format: date-time }
+        - in: query
+          name: level
+          schema: { type: integer, minimum: 1, maximum: 3 }
+        - in: query
+          name: userId
+          schema: { type: string, format: uuid }
+        - in: query
+          name: rideId
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Aggregated totals.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReferralEarningsSummaryResponse'
+  /auth/check-email:
+    post:
+      tags: [Auth]
+      operationId: checkEmail
+      summary: Check whether an email is already registered.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckEmailRequest'
+      responses:
+        '200':
+          description: Existence flag for the email.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailExistsResult'
+        '400':
+          description: Missing or malformed email.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: passwordLogin
+      summary: Sign in with email and password.
+      description: |
+        Verifies the bcrypt-hashed password and returns a session token. Used
+        by both the riders and drivers app for non-OTP sign-in.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordLoginRequest'
+      responses:
+        '200':
+          description: Authenticated session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSession'
+        '400':
+          description: Missing fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Invalid credentials.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: Too many login attempts.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /auth/complete-profile:
+    post:
+      tags: [Auth]
+      operationId: completeProfile
+      summary: Set email + password (and optional referral) for a phone-only account.
+      description: |
+        Used by the new signup wizard and by the legacy "complete profile"
+        prompt for users who originally signed up with phone-only OTP. Requires
+        a valid bearer token from a previous OTP verification.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteProfileRequest'
+      responses:
+        '200':
+          description: Profile completed; returns updated user.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthMe'
+        '400':
+          description: |
+            Validation error. The `error` field is one of:
+            `email_taken`, `weak_password`, `invalid_referral`, `invalid_email`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Missing or invalid bearer token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /site/settings:
+    get:
+      tags: [Site]
+      operationId: getSiteSettings
+      summary: Public site-wide settings (brand, social, maintenance).
+      responses:
+        '200':
+          description: Site settings.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [settings]
+                properties:
+                  settings:
+                    $ref: '#/components/schemas/SiteSettings'
+  /site/pages:
+    get:
+      tags: [Site]
+      operationId: listSitePages
+      summary: List published site pages for the given language.
+      parameters:
+        - in: query
+          name: lang
+          schema: { type: string, enum: [en, fr, ar] }
+          required: false
+      responses:
+        '200':
+          description: Pages list (slug + metadata only).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pages]
+                properties:
+                  pages:
+                    type: array
+                    items: { $ref: '#/components/schemas/SitePageSummary' }
+  /site/pages/{lang}/{slug}:
+    get:
+      tags: [Site]
+      operationId: getSitePageBySlug
+      summary: Fetch a single published site page by language + slug.
+      parameters:
+        - in: path
+          name: lang
+          required: true
+          schema: { type: string, enum: [en, fr, ar] }
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Page content.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [page]
+                properties:
+                  page: { $ref: '#/components/schemas/SitePage' }
+        '404':
+          description: Page not found or unpublished.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  # Note: /sitemap.xml and /robots.txt are intentionally NOT in this
+  # OpenAPI spec. They are mounted at the site root (no /api prefix)
+  # by the api-server so crawlers can fetch them directly, and there is
+  # no client-side use case that requires generated bindings.
+  /site/contact:
+    post:
+      tags: [Site]
+      operationId: postSiteContact
+      summary: Submit a contact form message from the marketing site.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SiteContactRequest' }
+      responses:
+        '200':
+          description: Submission accepted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SiteContactResponse' }
+        '400':
+          description: Invalid input.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '429':
+          description: Rate limited.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  /admin/site/pages:
+    get:
+      tags: [SiteAdmin]
+      operationId: adminListSitePages
+      summary: List all CMS pages (admin-only).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All pages (both languages, all statuses).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pages]
+                properties:
+                  pages:
+                    type: array
+                    items: { $ref: '#/components/schemas/SitePageSummary' }
+    post:
+      tags: [SiteAdmin]
+      operationId: adminCreateSitePage
+      summary: Create a new CMS page.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminSitePageUpsert' }
+      responses:
+        '201':
+          description: Created page.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [page]
+                properties:
+                  page: { $ref: '#/components/schemas/SitePage' }
+        '409':
+          description: A page with that slug + lang already exists.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  /admin/site/pages/{slug}/{lang}:
+    get:
+      tags: [SiteAdmin]
+      operationId: adminGetSitePage
+      summary: Fetch a single CMS page (any status).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+        - in: path
+          name: lang
+          required: true
+          schema: { type: string, enum: [en, fr, ar] }
+      responses:
+        '200':
+          description: Page.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [page]
+                properties:
+                  page: { $ref: '#/components/schemas/SitePage' }
+        '404':
+          description: Not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    put:
+      tags: [SiteAdmin]
+      operationId: adminUpdateSitePage
+      summary: Update an existing CMS page.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+        - in: path
+          name: lang
+          required: true
+          schema: { type: string, enum: [en, fr, ar] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminSitePageUpsert' }
+      responses:
+        '200':
+          description: Updated page.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [page]
+                properties:
+                  page: { $ref: '#/components/schemas/SitePage' }
+    delete:
+      tags: [SiteAdmin]
+      operationId: adminDeleteSitePage
+      summary: Delete a CMS page.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+        - in: path
+          name: lang
+          required: true
+          schema: { type: string, enum: [en, fr, ar] }
+      responses:
+        '200':
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+  /admin/site/settings:
+    get:
+      tags: [SiteAdmin]
+      operationId: adminGetSiteSettings
+      summary: Read full site-wide settings (admin).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Site settings.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [settings]
+                properties:
+                  settings: { $ref: '#/components/schemas/SiteSettings' }
+    patch:
+      tags: [SiteAdmin]
+      operationId: adminUpdateSiteSettings
+      summary: Update site-wide settings (partial).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SiteSettings' }
+      responses:
+        '200':
+          description: Updated settings.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [settings]
+                properties:
+                  settings: { $ref: '#/components/schemas/SiteSettings' }
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      operationId: resetPassword
+      summary: Reset password with phone + OTP code (web flow).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResetPasswordRequest' }
+      responses:
+        '200':
+          description: Password updated; client receives a session token.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, user]
+                properties:
+                  token: { type: string }
+                  user: { $ref: '#/components/schemas/AuthUser' }
+        '400':
+          description: Invalid input.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '401':
+          description: Invalid or expired code.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '404':
+          description: No account for that phone.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  /admin/site/contact-submissions:
+    get:
+      tags: [SiteAdmin]
+      operationId: adminListContactSubmissions
+      summary: List contact form submissions.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          required: false
+          schema: { type: string, enum: [new, read, archived] }
+      responses:
+        '200':
+          description: Submissions.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [submissions]
+                properties:
+                  submissions:
+                    type: array
+                    items: { $ref: '#/components/schemas/SiteContactSubmission' }
+  /admin/site/contact-submissions/{id}:
+    patch:
+      tags: [SiteAdmin]
+      operationId: adminUpdateContactSubmission
+      summary: Update a contact submission's status (new/read/archived).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminContactSubmissionUpdate' }
+      responses:
+        '200':
+          description: Updated submission.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [submission]
+                properties:
+                  submission: { $ref: '#/components/schemas/SiteContactSubmission' }
+        '404':
+          description: Not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    delete:
+      tags: [SiteAdmin]
+      operationId: adminDeleteContactSubmission
+      summary: Delete a contact submission.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+  /admin/notification-sounds:
+    get:
+      tags: [NotificationSounds]
+      operationId: adminListNotificationSounds
+      summary: List uploaded sounds plus the current mobile build hash.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Library listing with build status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminNotificationSoundsListResponse'
+  /admin/notification-sounds/upload-url:
+    post:
+      tags: [NotificationSounds]
+      operationId: adminRequestNotificationSoundUploadUrl
+      summary: Request a presigned upload URL for a notification sound (audio-only, max 1 MB).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NotificationSoundUploadUrlRequest'
+      responses:
+        '200':
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadUrlResponse'
+        '400':
+          description: Missing fields, unsupported MIME, or file too large.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /admin/notification-sounds/finalize:
+    post:
+      tags: [NotificationSounds]
+      operationId: adminFinalizeNotificationSound
+      summary: Mark an uploaded object public and create the library row.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinalizeNotificationSoundRequest'
+      responses:
+        '200':
+          description: Sound created.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sound]
+                properties:
+                  sound:
+                    $ref: '#/components/schemas/NotificationSound'
+        '400':
+          description: Invalid payload, reserved slug, or unsupported MIME.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Uploaded object not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Slug already in use.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to finalize upload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /admin/notification-sounds/{id}:
+    patch:
+      tags: [NotificationSounds]
+      operationId: adminRenameNotificationSound
+      summary: Rename a notification sound.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenameNotificationSoundRequest'
+      responses:
+        '200':
+          description: Renamed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          description: Invalid payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: Sound not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      tags: [NotificationSounds]
+      operationId: adminDeleteNotificationSound
+      summary: Delete a notification sound (rejects if currently assigned).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '404':
+          description: Sound not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Sound is currently assigned to one or more category settings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SoundInUseError'
+  /admin/notification-sounds/build-hash:
+    post:
+      tags: [NotificationSounds]
+      operationId: adminUpdateNotificationSoundsBuildHash
+      summary: Record the manifest hash and bundled sounds for the current mobile build.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBuildHashRequest'
+      responses:
+        '200':
+          description: Build hash recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+        '400':
+          description: Invalid manifestHash.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /notification-sounds/manifest:
+    get:
+      tags: [NotificationSounds]
+      operationId: getNotificationSoundsManifest
+      summary: Public manifest of every uploaded notification sound.
+      responses:
+        '200':
+          description: Manifest of uploaded sounds.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationSoundsManifestResponse'
+  /notification-sounds/active:
+    get:
+      tags: [NotificationSounds]
+      operationId: getActiveNotificationSounds
+      summary: Public mapping of category to active slug plus manifest.
+      responses:
+        '200':
+          description: Active category assignments and manifest.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveNotificationSoundsResponse'
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      description: |
+        Returns a presigned GCS URL for direct upload. The client sends JSON
+        metadata here, then uploads the file directly to the returned URL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadUrlRequest'
+      responses:
+        '200':
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadUrlResponse'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /storage/public-objects/{filePath}:
+    get:
+      tags: [Storage]
+      operationId: getPublicObject
+      summary: Serve a public asset from PUBLIC_OBJECT_SEARCH_PATHS
+      description: |
+        Unconditionally public — no authentication or ACL checks.
+        Searches PUBLIC_OBJECT_SEARCH_PATHS for the given file path.
+      parameters:
+        - name: filePath
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Relative file path within the public search paths.
+      responses:
+        '200':
+          description: Object content streamed with correct Content-Type.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: File not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to serve public object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /storage/objects/{objectPath}:
+    get:
+      tags: [Storage]
+      operationId: getStorageObject
+      summary: Serve an object entity from PRIVATE_OBJECT_DIR
+      description: |
+        Serves object entities uploaded via presigned URLs. These can optionally
+        be protected with authentication or ACL checks based on the use case.
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Object path within the private object dir (e.g. `uploads/some-uuid`).
+      responses:
+        '200':
+          description: Object content streamed with correct Content-Type.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Object not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to serve object.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /driver/queued-requests:
+    get:
+      tags: [Driver]
+      summary: List queued ride candidates and the driver's currently queued ride
+      description: |
+        Returns ride candidates whose pickup is near the driver's current dropoff,
+        eligible to be queued as the driver's next trip. Also returns any ride the
+        driver has already queued.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Queued candidates and accepted queued ride
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [candidates, queued]
+                properties:
+                  candidates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/QueuedRideCandidate'
+                  queued:
+                    nullable: true
+                    allOf:
+                      - $ref: '#/components/schemas/QueuedRideAccepted'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /driver/queued-requests/{rideId}/accept:
+    post:
+      tags: [Driver]
+      summary: Accept a queued ride request
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: rideId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Queued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, ride]
+                properties:
+                  ok: { type: boolean }
+                  ride:
+                    $ref: '#/components/schemas/QueuedRideAccepted'
+        '409':
+          description: Already taken or driver no longer eligible
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /system/activate-next-queued-ride:
+    post:
+      summary: Manually re-trigger queued-ride activation after a trip completes
+      description: |
+        Internal endpoint used by the driver app as a safety net to re-trigger
+        activation of an accepted queued ride if the automatic activation
+        inside `POST /rides/{id}/complete` failed or was missed (e.g. the
+        client timed out before receiving the response). Restricted to the
+        driver who completed the trip.
+      operationId: activateNextQueuedRide
+      tags: [QueuedRides]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivateNextQueuedRideRequest'
+      responses:
+        '200':
+          description: Activation result. `activated` is null if nothing was queued / activation no longer applies.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivateNextQueuedRideResult'
+        '400':
+          description: Invalid input
+        '403':
+          description: Caller is not the driver of the completed trip
+  /driver/destination-mode:
+    get:
+      tags: [Driver]
+      operationId: getDriverDestinationMode
+      summary: Get the driver's current destination mode state and quota
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Destination mode state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DestinationModeState'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /driver/destination-mode/activate:
+    post:
+      tags: [Driver]
+      operationId: activateDriverDestinationMode
+      summary: Turn on destination mode toward an address
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActivateDestinationModeRequest'
+      responses:
+        '200':
+          description: Activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DestinationModeState'
+        '400':
+          description: Invalid input or feature disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: Daily activation cap reached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /driver/destination-mode/deactivate:
+    post:
+      tags: [Driver]
+      operationId: deactivateDriverDestinationMode
+      summary: Turn off destination mode
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Deactivated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DestinationModeState'
+  /driver/saved-places:
+    get:
+      tags: [Driver]
+      operationId: listDriverSavedPlaces
+      summary: List the driver's saved places (Home/Work) and recents
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Saved places + recents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriverSavedPlacesResponse'
+    post:
+      tags: [Driver]
+      operationId: upsertDriverSavedPlace
+      summary: Save or upsert a Home/Work/recent place for the driver
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertDriverSavedPlaceRequest'
+      responses:
+        '200':
+          description: Upserted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriverSavedPlace'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /driver/saved-places/{id}:
+    delete:
+      tags: [Driver]
+      operationId: deleteDriverSavedPlace
+      summary: Delete a saved/recent place
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OkResponse'
+  /driver/queued-requests/{rideId}/decline:
+    post:
+      tags: [Driver]
+      summary: Decline a queued ride candidate (60s cooldown)
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: rideId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Declined
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+  /admin/currencies:
+    get:
+      tags: [Currencies]
+      operationId: listAdminCurrencies
+      summary: List every currency in the catalog (USD first, then alphabetical).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: All currencies plus the current platform default.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminCurrencyListResponse' }
+    post:
+      tags: [Currencies]
+      operationId: createAdminCurrency
+      summary: Add a new currency to the catalog.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAdminCurrencyRequest' }
+      responses:
+        '201':
+          description: Currency created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminCurrencySingleResponse' }
+        '400':
+          description: Invalid input.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '409':
+          description: Code already exists.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  /admin/currencies/refresh:
+    post:
+      tags: [Currencies]
+      operationId: refreshAdminCurrencies
+      summary: Manually trigger an exchange-rate refresh.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Refresh result with updated currency list.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminCurrencyRefreshResponse' }
+  /admin/currencies/reorder:
+    patch:
+      tags: [Currencies]
+      operationId: reorderAdminCurrencies
+      summary: Persist a new ordering for the currency selectors.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [codes]
+              properties:
+                codes:
+                  type: array
+                  minItems: 1
+                  items: { type: string, minLength: 3, maxLength: 3, pattern: '^[A-Z]{3}$' }
+      responses:
+        '200':
+          description: Updated ordering applied; refreshed list returned for one-shot UI sync.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminCurrencyListResponse' }
+        '400':
+          description: Payload missing or doesn't include every currency exactly once.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  /admin/currencies/{code}:
+    get:
+      tags: [Currencies]
+      operationId: getAdminCurrency
+      summary: Fetch a single currency, including whether its code is locked for editing.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Currency row.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminCurrencySingleResponse' }
+        '404':
+          description: Currency not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    patch:
+      tags: [Currencies]
+      operationId: updateAdminCurrency
+      summary: Update a currency (active flag, name, symbol, rate, formatting).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAdminCurrencyRequest' }
+      responses:
+        '200':
+          description: Currency updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [currency]
+                properties:
+                  currency: { $ref: '#/components/schemas/AdminCurrency' }
+        '400':
+          description: Invalid input.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '409':
+          description: Update rejected (e.g. cannot disable default currency).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '404':
+          description: Currency not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    delete:
+      tags: [Currencies]
+      operationId: deleteAdminCurrency
+      summary: Delete a currency (refused when in use, USD, or current default).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Deleted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OkResponse' }
+        '404':
+          description: Currency not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '409':
+          description: Currency is in use.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  /admin/currencies/{code}/set-default:
+    patch:
+      tags: [Currencies]
+      operationId: setAdminCurrencyDefault
+      summary: Mark this currency as the platform default (updates app_settings.displayCurrency).
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: code
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Default updated; refreshed list returned for one-shot UI sync.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminCurrencySetDefaultResponse' }
+        '404':
+          description: Currency not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '409':
+          description: Currency is inactive.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  /trips/{tripId}/messages:
+    get:
+      tags: [TripChat]
+      operationId: listTripMessages
+      summary: List trip chat history (ephemeral — empty for inactive trips).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tripId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Messages array (empty when trip is not active).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [messages]
+                properties:
+                  messages:
+                    type: array
+                    items: { $ref: '#/components/schemas/TripChatMessage' }
+        '401': { description: Unauthenticated }
+        '403': { description: Caller is not a trip participant }
+    post:
+      tags: [TripChat]
+      operationId: createTripMessage
+      summary: Send a chat message in an active trip.
+      description: |
+        Rate-limited to 30 messages / minute / (user, trip). Returns 429 with
+        a `Retry-After` header when exceeded. Recipient receives a realtime
+        `trip:message` socket event and (when offline / not in chat) a push.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tripId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTripMessageRequest' }
+      responses:
+        '201':
+          description: Message created and broadcast.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { $ref: '#/components/schemas/TripChatMessage' }
+        '200':
+          description: |
+            Idempotent replay — a previous request with the same `clientId`
+            already created this message. The original row is returned and no
+            new broadcast / push is sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { $ref: '#/components/schemas/TripChatMessage' }
+        '400': { description: Invalid body }
+        '401': { description: Unauthenticated }
+        '403': { description: Caller is not a trip participant }
+        '409': { description: Trip is not active }
+        '429':
+          description: Rate limit exceeded.
+          headers:
+            Retry-After:
+              schema: { type: integer }
+              description: Seconds until the next message may be sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error, retryAfterMs]
+                properties:
+                  error: { type: string }
+                  retryAfterMs: { type: integer }
+  /trips/{tripId}/unread-count:
+    get:
+      tags: [TripChat]
+      operationId: getTripUnreadCount
+      summary: Per-trip unread chat count for the caller.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: tripId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Unread count (0 for inactive trips).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [unread]
+                properties:
+                  unread: { type: integer, minimum: 0 }
+        '401': { description: Unauthenticated }
+        '403': { description: Caller is not a trip participant }
+  /chat/unread-count:
+    get:
+      tags: [TripChat]
+      operationId: getGlobalUnreadCount
+      summary: Aggregate unread chat count across all active trips.
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Total + per-trip breakdown.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [unread, byTrip]
+                properties:
+                  unread: { type: integer, minimum: 0 }
+                  byTrip:
+                    type: object
+                    additionalProperties: { type: integer, minimum: 0 }
+        '401': { description: Unauthenticated }
+  /trips/{tripId}/messages/mark-read:
+    post:
+      tags: [TripChat]
+      operationId: markTripMessagesRead
+      summary: Mark peer messages in a trip as read (and delivered).
+      description: |
+        Marks every message sent by the peer up to and including
+        `upToMessageId` (or all if omitted) as read. Emits `chat:message:read`
+        to the sender (✓✓ blue) and `chat:unread:update` with the actual
+        remaining unread count for the caller.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: tripId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MarkTripMessagesReadRequest' }
+      responses:
+        '200':
+          description: Updated count + remaining unread.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [updated, messageIds, unread]
+                properties:
+                  updated: { type: integer, minimum: 0 }
+                  messageIds:
+                    type: array
+                    items: { type: string, format: uuid }
+                  unread:
+                    type: integer
+                    minimum: 0
+                    description: Remaining unread peer messages for the caller after this update.
+        '401': { description: Unauthenticated }
+        '403': { description: Caller is not a trip participant }
+        '404': { description: upToMessageId not found in trip }
+  /storage/uploads/chat-request-url:
+    post:
+      tags: [TripChat]
+      operationId: requestChatUploadUrl
+      summary: Presigned upload URL for a chat image or voice attachment.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChatUploadRequest' }
+      responses:
+        '200':
+          description: Presigned URL.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChatUploadResponse' }
+        '400': { description: Invalid body / unsupported MIME / file too large }
+        '401': { description: Unauthenticated }
+        '403': { description: Caller is not a trip participant }
+        '409': { description: Trip is not active }
+  /storage/uploads/chat-finalize:
+    post:
+      tags: [TripChat]
+      operationId: finalizeChatUpload
+      summary: Finalize a chat attachment upload (set ACL).
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChatFinalizeRequest' }
+      responses:
+        '200':
+          description: Normalized object path.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [objectPath]
+                properties:
+                  objectPath: { type: string }
+        '400': { description: Invalid body }
+        '401': { description: Unauthenticated }
+        '403': { description: Caller is not a trip participant }
+        '409': { description: Trip is not active }
+  /me/quick-replies:
+    get:
+      tags: [UserSettings]
+      operationId: getMyQuickReplies
+      summary: Get the signed-in user's customised chat quick-reply lists.
+      description: |
+        Returns the user's saved quick-reply phrases for both the rider and
+        driver chat sides. When the user has never edited a side the
+        corresponding array is empty and clients should fall back to the
+        built-in defaults.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Quick reply lists.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuickRepliesResponse' }
+        '401': { description: Unauthenticated }
+    put:
+      tags: [UserSettings]
+      operationId: updateMyQuickReplies
+      summary: Replace the signed-in user's quick-reply list for one role.
+      description: |
+        Replaces the saved phrases for either the rider or driver chat side.
+        Entries are trimmed, blanks dropped, clipped to 60 characters, and
+        capped at 12 items. Returns the persisted lists.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateQuickRepliesRequest' }
+      responses:
+        '200':
+          description: Updated quick reply lists.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuickRepliesResponse' }
+        '400': { description: Invalid body }
+        '401': { description: Unauthenticated }
+  /bidding/nearby:
+    get:
+      tags: [Bidding]
+      operationId: getBiddingNearby
+      summary: List active bidding rides within driver's radius.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: radiusKm
+          required: false
+          schema:
+            type: number
+            minimum: 0.5
+            maximum: 25
+            default: 5
+      responses:
+        '200':
+          description: Nearby bidding rides sorted by distance ascending.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BiddingNearbyResponse' }
+        '403': { description: Not an approved driver }
+        '409': { description: No live driver position available }
+  /bidding/offers:
+    post:
+      tags: [Bidding]
+      operationId: createBiddingOffer
+      summary: Driver posts (or counter-offers) a bid on a bidding ride.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBiddingOfferBody' }
+      responses:
+        '201':
+          description: Bid created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BiddingOfferResponse' }
+        '400': { description: Invalid input or bid violates fare bounds }
+        '403': { description: Driver not approved or not online }
+        '404': { description: Ride not found }
+        '409': { description: Ride is no longer accepting bids }
+        '410': { description: Bidding deadline has passed }
+  /bidding/offers/{bidId}/withdraw:
+    post:
+      tags: [Bidding]
+      operationId: withdrawBiddingOffer
+      summary: Driver withdraws an active bid.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: bidId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Bid cancelled.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BiddingOfferResponse' }
+        '403': { description: Not the bid owner }
+        '404': { description: Bid not found }
+        '409': { description: Bid is not active }
+  /bidding/posts/{rideId}/accept-offer:
+    post:
+      tags: [Bidding]
+      operationId: acceptBiddingOffer
+      summary: Rider accepts one driver's offer; other active bids are rejected.
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: rideId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AcceptBiddingOfferBody' }
+      responses:
+        '200':
+          description: Bid accepted; ride moves to driver_arriving.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AcceptBiddingOfferResponse' }
+        '403': { description: Not the ride owner }
+        '404': { description: Ride or bid not found }
+        '409': { description: Ride is no longer in bidding state }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    AirportLocation:
+      type: object
+      required: [id, name, country, centerLat, centerLng, radiusM, active]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        country: { type: string }
+        centerLat: { type: number }
+        centerLng: { type: number }
+        radiusM: { type: integer, minimum: 1 }
+        active: { type: boolean }
+    CreateAirportLocationRequest:
+      type: object
+      required: [name, centerLat, centerLng, radiusM]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        country: { type: string, maxLength: 100 }
+        centerLat: { type: number, minimum: -90, maximum: 90 }
+        centerLng: { type: number, minimum: -180, maximum: 180 }
+        radiusM: { type: integer, minimum: 1, maximum: 50000 }
+        active: { type: boolean }
+    AirportSurcharge:
+      type: object
+      required:
+        - id
+        - airportLocationId
+        - vehicleTypeId
+        - surchargeType
+        - pickupSurchargeValue
+        - dropoffSurchargeValue
+        - active
+        - createdAt
+        - updatedAt
+      properties:
+        id: { type: string, format: uuid }
+        airportLocationId: { type: string, format: uuid }
+        airportName: { type: string, nullable: true }
+        vehicleTypeId: { type: string, format: uuid }
+        vehicleTypeName: { type: string, nullable: true }
+        surchargeType: { type: string, enum: [multiplier, fixed] }
+        pickupSurchargeValue: { type: number, exclusiveMinimum: 0 }
+        dropoffSurchargeValue: { type: number, exclusiveMinimum: 0 }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AirportSurchargeInput:
+      type: object
+      properties:
+        airportLocationId: { type: string, format: uuid }
+        vehicleTypeId: { type: string, format: uuid }
+        surchargeType: { type: string, enum: [multiplier, fixed] }
+        pickupSurchargeValue: { type: number, exclusiveMinimum: 0 }
+        dropoffSurchargeValue: { type: number, exclusiveMinimum: 0 }
+        active: { type: boolean }
+    SetAirportSurchargeStatusRequest:
+      type: object
+      required: [active]
+      properties:
+        active: { type: boolean }
+    ReferralLevel:
+      type: object
+      required: [level, percentage, isActive, updatedAt]
+      properties:
+        level: { type: integer, minimum: 1, maximum: 3 }
+        percentage: { type: number, minimum: 0, maximum: 100 }
+        isActive: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+    UpdateReferralLevelRequest:
+      type: object
+      required: [percentage]
+      properties:
+        percentage: { type: number, minimum: 0, maximum: 100 }
+        isActive: { type: boolean }
+    ReferralEarning:
+      type: object
+      required: [id, userId, fromUserId, rideId, level, percentage, amount, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        fromUserId: { type: string, format: uuid }
+        rideId: { type: string, format: uuid }
+        level: { type: integer }
+        percentage: { type: number }
+        amount: { type: number }
+        status: { type: string, enum: [credited, reversed] }
+        createdAt: { type: string, format: date-time }
+        beneficiaryName: { type: string, nullable: true }
+        beneficiaryPhone: { type: string, nullable: true }
+        fromUserName: { type: string, nullable: true }
+        fromUserPhone: { type: string, nullable: true }
+    ReferralEarningsListResponse:
+      type: object
+      required: [earnings, total, totalAmount]
+      properties:
+        earnings:
+          type: array
+          items: { $ref: '#/components/schemas/ReferralEarning' }
+        total: { type: integer }
+        totalAmount: { type: number }
+    ReferralByLevel:
+      type: object
+      required: [level, count, amount]
+      properties:
+        level: { type: integer }
+        count: { type: integer }
+        amount: { type: number }
+    ReferralEarningsSummaryResponse:
+      type: object
+      required: [total, totalAmount, uniqueBeneficiaries, uniqueRides, byLevel]
+      properties:
+        total: { type: integer }
+        totalAmount: { type: number }
+        uniqueBeneficiaries: { type: integer }
+        uniqueRides: { type: integer }
+        byLevel:
+          type: array
+          items: { $ref: '#/components/schemas/ReferralByLevel' }
+    ReferredUser:
+      type: object
+      required: [id, level, joinedAt, totalEarned, earningsCount]
+      properties:
+        id: { type: string, format: uuid }
+        firstName: { type: string, nullable: true }
+        lastName: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        level: { type: integer, description: "Referral chain depth (1 = direct referral)" }
+        joinedAt: { type: string, format: date-time }
+        totalEarned: { type: number }
+        earningsCount: { type: integer }
+    ReferralsMeResponse:
+      type: object
+      required: [referralCode, totals, referredUsers, levels]
+      properties:
+        referralCode: { type: string, nullable: true }
+        totals:
+          type: object
+          required: [total, count, byLevel]
+          properties:
+            total: { type: number }
+            count: { type: integer }
+            byLevel:
+              type: array
+              items: { $ref: '#/components/schemas/ReferralByLevel' }
+        referredUsers:
+          type: array
+          items: { $ref: '#/components/schemas/ReferredUser' }
+        levels:
+          type: array
+          items:
+            type: object
+            required: [level, percentage, isActive]
+            properties:
+              level: { type: integer }
+              percentage: { type: number }
+              isActive: { type: boolean }
+    MlmReportSearchUser:
+      type: object
+      required: [id, name, phone, appMode, driverStatus]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        referralCode: { type: string, nullable: true }
+        appMode: { type: string, enum: [rider, driver] }
+        driverStatus: { type: string }
+    MlmReportSearchResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items: { $ref: '#/components/schemas/MlmReportSearchUser' }
+    MlmReportNode:
+      type: object
+      required:
+        [
+          id,
+          name,
+          appMode,
+          driverStatus,
+          level,
+          referralCode,
+          directReferrals,
+          totalEarnings,
+          paidRewards,
+          pendingRewards,
+          joinedAt,
+          isActive,
+          children,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        appMode: { type: string, enum: [rider, driver] }
+        driverStatus: { type: string }
+        level: { type: integer, minimum: 1, maximum: 6 }
+        referralCode: { type: string, nullable: true }
+        referredByUserId: { type: string, format: uuid, nullable: true }
+        directReferrals: { type: integer }
+        totalEarnings: { type: number, description: 'Total referral earnings ever credited to this user (sum of referral_earnings amounts where status=credited).' }
+        paidRewards: { type: number, description: 'Rewards already paid out to the wallet. Equals totalEarnings in the current schema because credited rewards are paid immediately.' }
+        pendingRewards: { type: number, description: 'Rewards earned but not yet paid out. Always 0 in the current schema since there is no async payout queue — included for forward compatibility.' }
+        joinedAt: { type: string, format: date-time }
+        isActive: { type: boolean }
+        children:
+          type: array
+          items: { $ref: '#/components/schemas/MlmReportNode' }
+    MlmReportRoot:
+      type: object
+      required:
+        [id, name, appMode, driverStatus, referralCode, joinedAt, isActive]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        phone: { type: string, nullable: true }
+        email: { type: string, nullable: true }
+        appMode: { type: string, enum: [rider, driver] }
+        driverStatus: { type: string }
+        referralCode: { type: string, nullable: true }
+        joinedAt: { type: string, format: date-time }
+        isActive: { type: boolean }
+    MlmReportSummary:
+      type: object
+      required:
+        [
+          level1Count,
+          level2Count,
+          level3Count,
+          levelCounts,
+          totalEarnings,
+          paidRewards,
+          pendingRewards,
+        ]
+      properties:
+        level1Count: { type: integer }
+        level2Count: { type: integer }
+        level3Count: { type: integer }
+        levelCounts:
+          type: array
+          description: 'Per-level downline counts, indexed by level (levelCounts[0] = level 1, etc.). Length matches the depth used to build the report.'
+          items: { type: integer }
+        totalEarnings: { type: number, description: 'Total referral earnings credited across the entire downline.' }
+        paidRewards: { type: number, description: 'Rewards already paid out across the downline. Equals totalEarnings in the current schema.' }
+        pendingRewards: { type: number, description: 'Rewards earned but not yet paid out. Always 0 in the current schema; reserved for future async payout flows.' }
+    MlmReportResponse:
+      type: object
+      required: [root, summary, tree, depth]
+      properties:
+        root: { $ref: '#/components/schemas/MlmReportRoot' }
+        summary: { $ref: '#/components/schemas/MlmReportSummary' }
+        depth: { type: integer, minimum: 1, maximum: 6, description: 'Depth used to build this report.' }
+        tree:
+          type: array
+          items: { $ref: '#/components/schemas/MlmReportNode' }
+    MlmReportEarningRow:
+      type: object
+      required:
+        [
+          id,
+          rideId,
+          level,
+          percentage,
+          amount,
+          status,
+          createdAt,
+          fromUserId,
+        ]
+      properties:
+        id: { type: string, format: uuid }
+        rideId: { type: string, format: uuid, nullable: true, description: 'Null when the underlying ride has since been deleted.' }
+        level: { type: integer, minimum: 1, maximum: 3 }
+        percentage: { type: number }
+        amount: { type: number }
+        status: { type: string, enum: [credited, reversed] }
+        createdAt: { type: string, format: date-time }
+        fromUserId: { type: string, format: uuid }
+        fromUserName: { type: string, nullable: true }
+        fromUserPhone: { type: string, nullable: true }
+    MlmReportUserEarningsResponse:
+      type: object
+      required: [user, earnings, totalAmount]
+      properties:
+        user:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            phone: { type: string, nullable: true }
+        earnings:
+          type: array
+          items: { $ref: '#/components/schemas/MlmReportEarningRow' }
+        totalAmount: { type: number, description: 'Sum of credited earnings amounts across the returned rows.' }
+    ReferralTreeNode:
+      type: object
+      required: [id, name, level, children]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        level: { type: integer, minimum: 1, maximum: 3 }
+        children:
+          type: array
+          items: { $ref: '#/components/schemas/ReferralTreeNode' }
+    ReferralTreeResponse:
+      type: object
+      required: [user, children]
+      properties:
+        user:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+        children:
+          type: array
+          items: { $ref: '#/components/schemas/ReferralTreeNode' }
+    AuthUser:
+      type: object
+      required: [id, phone, appMode, driverStatus]
+      properties:
+        id: { type: string, format: uuid }
+        phone: { type: string }
+        countryCode: { type: string, nullable: true }
+        firstName: { type: string, nullable: true }
+        lastName: { type: string, nullable: true }
+        email: { type: string, format: email, nullable: true }
+        hasPassword: { type: boolean }
+        referralCode: { type: string, nullable: true }
+        referredByCode: { type: string, nullable: true }
+        appMode: { type: string, enum: [rider, driver] }
+        driverStatus: { type: string }
+        photoUrl: { type: string, nullable: true }
+    CheckEmailRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    EmailExistsResult:
+      type: object
+      required: [exists]
+      properties:
+        exists: { type: boolean }
+    PasswordLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+    AuthSession:
+      type: object
+      required: [token, user]
+      properties:
+        token: { type: string }
+        user: { $ref: '#/components/schemas/AuthUser' }
+    AuthMe:
+      type: object
+      required: [user]
+      properties:
+        user: { $ref: '#/components/schemas/AuthUser' }
+    CompleteProfileRequest:
+      type: object
+      required: [firstName, email, password]
+      properties:
+        firstName: { type: string, minLength: 1 }
+        lastName: { type: string }
+        email: { type: string, format: email }
+        password:
+          type: string
+          minLength: 8
+          description: Must contain at least one letter and one number.
+        referredByCode:
+          type: string
+          nullable: true
+          description: Referral code of an existing user.
+    DemandZone:
+      type: object
+      required: [lat, lng, intensity, surgeMultiplier, labelMode]
+      properties:
+        lat: { type: number, description: "Cell centre latitude." }
+        lng: { type: number, description: "Cell centre longitude." }
+        intensity:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: "Normalised tier index (0=light, 0.25, 0.5, 0.75, 1=very high)."
+        surgeMultiplier:
+          type: number
+          description: "Raw demand/(supply+1) ratio (uncapped)."
+        bonus:
+          type: number
+          nullable: true
+          description: "Optional per-zone bonus in the project currency, used when labelMode=bonus."
+        labelMode:
+          type: string
+          enum: [multiplier, bonus, off]
+          description: "Hint to the client on what label (if any) to render on this zone."
+    DemandZoneSnapshot:
+      type: object
+      required: [zones, generatedAt]
+      properties:
+        zones:
+          type: array
+          items: { $ref: '#/components/schemas/DemandZone' }
+        generatedAt:
+          type: string
+          format: date-time
+          description: "Server timestamp of the snapshot."
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    UploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Original file name.
+        size:
+          type: integer
+          minimum: 1
+          description: File size in bytes.
+        contentType:
+          type: string
+          minLength: 1
+          description: MIME type of the file (e.g. `image/jpeg`).
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL:
+          type: string
+          format: uri
+          description: Presigned GCS URL for PUT upload.
+        objectPath:
+          type: string
+          description: Normalized object path (e.g. `/objects/uploads/uuid`). Store this in your database.
+        metadata:
+          $ref: '#/components/schemas/UploadUrlRequest'
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    ActivateNextQueuedRideRequest:
+      type: object
+      required: [completedTripId]
+      properties:
+        completedTripId:
+          type: string
+          format: uuid
+    ActivateNextQueuedRideResult:
+      type: object
+      required: [activated]
+      properties:
+        activated:
+          nullable: true
+          type: object
+          required: [activatedRideId, rideStatus]
+          properties:
+            activatedRideId: { type: string, format: uuid }
+            rideStatus: { type: string }
+    QueuedRideCandidate:
+      type: object
+      required: [rideId, riderName, pickupAddress, distanceFromCurrentDropoffKm, suggestedFare, expiresAtMs]
+      properties:
+        rideId: { type: string, format: uuid }
+        riderName: { type: string }
+        pickupAddress: { type: string }
+        distanceFromCurrentDropoffKm: { type: number }
+        suggestedFare: { type: number }
+        expiresAtMs: { type: integer, format: int64 }
+    QueuedRideAccepted:
+      type: object
+      required: [rideId, pickupAddress, suggestedFare]
+      properties:
+        rideId: { type: string, format: uuid }
+        pickupAddress: { type: string }
+        suggestedFare: { type: number }
+        initialFare: { type: number, nullable: true }
+    OkResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+    DestinationModeConfig:
+      type: object
+      required: [enabled, maxPerDay, matchRadiusKm, corridorKm, autoDisableOnTrip, autoDisableMinutes]
+      properties:
+        enabled: { type: boolean, description: "Master feature flag from admin settings." }
+        maxPerDay: { type: integer, minimum: 0, description: "How many activations the driver may make per 24h." }
+        matchRadiusKm: { type: number, description: "Dropoff match radius around the destination." }
+        corridorKm: { type: number, description: "Cross-track corridor width along the pickup→dropoff bearing." }
+        autoDisableOnTrip: { type: boolean }
+        autoDisableMinutes: { type: integer, minimum: 0 }
+    DestinationModeActive:
+      type: object
+      required: [id, address, lat, lng, label, activatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        address: { type: string }
+        label: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+        activatedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time, nullable: true }
+    DestinationModeState:
+      type: object
+      required: [active, filtersUsedToday, filtersRemainingToday, config]
+      properties:
+        active:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/DestinationModeActive'
+        filtersUsedToday: { type: integer, minimum: 0 }
+        filtersRemainingToday: { type: integer, minimum: 0 }
+        disabledUntil:
+          type: string
+          format: date-time
+          nullable: true
+          description: When set and in the future, an admin has temporarily disabled destination mode for this driver until this timestamp.
+        disabledReason:
+          type: string
+          nullable: true
+          description: Optional admin-provided reason explaining why destination mode is disabled for this driver.
+        config: { $ref: '#/components/schemas/DestinationModeConfig' }
+    ActivateDestinationModeRequest:
+      type: object
+      required: [address, lat, lng]
+      properties:
+        address: { type: string, minLength: 1, maxLength: 300 }
+        label: { type: string, maxLength: 80 }
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+        googlePlaceId: { type: string, maxLength: 200, nullable: true }
+    DriverSavedPlace:
+      type: object
+      required: [id, kind, label, address, lat, lng, lastUsedAt]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [home, work, recent] }
+        label: { type: string }
+        address: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+        googlePlaceId: { type: string, nullable: true }
+        lastUsedAt: { type: integer, format: int64, description: "Epoch ms." }
+    DriverSavedPlacesResponse:
+      type: object
+      required: [home, work, recents]
+      properties:
+        home:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/DriverSavedPlace'
+        work:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/DriverSavedPlace'
+        recents:
+          type: array
+          items: { $ref: '#/components/schemas/DriverSavedPlace' }
+    UpsertDriverSavedPlaceRequest:
+      type: object
+      required: [kind, address, lat, lng]
+      properties:
+        kind: { type: string, enum: [home, work, recent] }
+        label: { type: string, maxLength: 80 }
+        address: { type: string, minLength: 1, maxLength: 300 }
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+        googlePlaceId: { type: string, maxLength: 200, nullable: true }
+    NotificationSound:
+      type: object
+      required: [id, slug, displayName, mimeType, sizeBytes, checksum, url, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        displayName: { type: string }
+        mimeType: { type: string }
+        sizeBytes: { type: integer }
+        checksum: { type: string }
+        url: { type: string }
+        createdAt: { type: string, format: date-time }
+    AdminNotificationSound:
+      allOf:
+        - $ref: '#/components/schemas/NotificationSound'
+        - type: object
+          required: [inCurrentBuild]
+          properties:
+            inCurrentBuild:
+              type: boolean
+              description: True only when the exact uploaded file (matching checksum) is shipped in the latest mobile build.
+    AdminNotificationSoundsBuildStatus:
+      type: object
+      required: [manifestHash, currentManifestHash, upToDate]
+      properties:
+        manifestHash:
+          type: string
+          nullable: true
+          description: Hash of the manifest the latest mobile build was produced from.
+        currentManifestHash:
+          type: string
+          description: Hash of the current server-side manifest.
+        upToDate: { type: boolean }
+    AdminNotificationSoundsListResponse:
+      type: object
+      required: [sounds, build, reservedSlugs]
+      properties:
+        sounds:
+          type: array
+          items: { $ref: '#/components/schemas/AdminNotificationSound' }
+        build: { $ref: '#/components/schemas/AdminNotificationSoundsBuildStatus' }
+        reservedSlugs:
+          type: array
+          items: { type: string }
+    NotificationSoundUploadUrlRequest:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        size:
+          type: integer
+          minimum: 1
+          maximum: 1048576
+          description: File size in bytes (max 1 MB).
+        contentType:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Audio MIME type (mp3, wav, m4a, aac, caf, ogg).
+    FinalizeNotificationSoundRequest:
+      type: object
+      required: [objectPath, slug, displayName, mimeType, sizeBytes, checksum]
+      properties:
+        objectPath:
+          type: string
+          pattern: '^/objects/uploads/[A-Za-z0-9._-]{1,128}$'
+        slug:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9_-]{1,40}$'
+          description: URL-safe identifier; must not collide with a reserved bundled-preset name.
+        displayName: { type: string, minLength: 1, maxLength: 120 }
+        mimeType: { type: string, minLength: 1, maxLength: 80 }
+        sizeBytes: { type: integer, minimum: 1, maximum: 1048576 }
+        checksum: { type: string, minLength: 4, maxLength: 128 }
+    RenameNotificationSoundRequest:
+      type: object
+      required: [displayName]
+      properties:
+        displayName: { type: string, minLength: 1, maxLength: 120 }
+    SoundInUseError:
+      type: object
+      required: [error, inUseFor]
+      properties:
+        error: { type: string }
+        inUseFor:
+          type: array
+          items: { type: string }
+    BundledSoundEntry:
+      type: object
+      required: [slug, checksum]
+      properties:
+        slug:
+          type: string
+          pattern: '^[a-z0-9][a-z0-9_-]{1,40}$'
+        checksum: { type: string, minLength: 4, maxLength: 128 }
+    UpdateBuildHashRequest:
+      type: object
+      required: [manifestHash]
+      properties:
+        manifestHash: { type: string, minLength: 4, maxLength: 128 }
+        bundledSounds:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/BundledSoundEntry' }
+    NotificationSoundsManifestResponse:
+      type: object
+      required: [manifestHash, sounds]
+      properties:
+        manifestHash: { type: string }
+        sounds:
+          type: array
+          items:
+            type: object
+            required: [slug, displayName, mimeType, sizeBytes, checksum, url]
+            properties:
+              slug: { type: string }
+              displayName: { type: string }
+              mimeType: { type: string }
+              sizeBytes: { type: integer }
+              checksum: { type: string }
+              url: { type: string }
+    ActiveNotificationSoundCategories:
+      type: object
+      required: [newTripRequest, driverApp, userApp, voipCalling]
+      properties:
+        newTripRequest: { type: string }
+        driverApp: { type: string }
+        userApp: { type: string }
+        voipCalling: { type: string }
+    ActiveNotificationSoundsResponse:
+      type: object
+      required: [active, manifestHash, sounds]
+      properties:
+        active: { $ref: '#/components/schemas/ActiveNotificationSoundCategories' }
+        manifestHash: { type: string }
+        sounds:
+          type: array
+          items:
+            type: object
+            required: [slug, displayName, mimeType, sizeBytes, checksum, url]
+            properties:
+              slug: { type: string }
+              displayName: { type: string }
+              mimeType: { type: string }
+              sizeBytes: { type: integer }
+              checksum: { type: string }
+              url: { type: string }
+    SiteSettings:
+      type: object
+      additionalProperties: true
+      properties:
+        siteName: { type: string, nullable: true }
+        defaultOgImage: { type: string, nullable: true }
+        appStoreUrl: { type: string, nullable: true }
+        playStoreUrl: { type: string, nullable: true }
+        maintenanceMode: { type: boolean }
+        maintenanceMessage: { type: string, nullable: true }
+        footerLogoUrl: { type: string, nullable: true }
+        headerLogoUrl: { type: string, nullable: true }
+    SitePageSummary:
+      type: object
+      required: [slug, lang, title, status, updatedAt]
+      properties:
+        slug: { type: string }
+        lang: { type: string, enum: [en, fr, ar] }
+        title: { type: string }
+        status: { type: string, enum: [draft, published] }
+        updatedAt: { type: string, format: date-time }
+    SitePageContent:
+      type: object
+      additionalProperties: true
+      properties:
+        heading: { type: string, nullable: true }
+        subheading: { type: string, nullable: true }
+        blocks:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            required: [type]
+            properties:
+              type: { type: string }
+    SitePage:
+      allOf:
+        - $ref: '#/components/schemas/SitePageSummary'
+        - type: object
+          required: [content, twitterCard, robotsIndex]
+          properties:
+            content: { $ref: '#/components/schemas/SitePageContent' }
+            metaTitle: { type: string, nullable: true }
+            metaDescription: { type: string, nullable: true }
+            metaKeywords: { type: string, nullable: true }
+            ogTitle: { type: string, nullable: true }
+            ogDescription: { type: string, nullable: true }
+            ogImage: { type: string, nullable: true }
+            twitterCard: { type: string, enum: [summary, summary_large_image] }
+            canonicalUrl: { type: string, nullable: true }
+            robotsIndex: { type: boolean }
+    SiteContactRequest:
+      type: object
+      required: [name, email, message]
+      properties:
+        name: { type: string, maxLength: 200 }
+        email: { type: string, format: email }
+        phone: { type: string, nullable: true }
+        subject: { type: string, nullable: true }
+        message: { type: string, maxLength: 5000 }
+    SiteContactResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok: { type: boolean }
+        id: { type: string, format: uuid }
+    SiteContactSubmission:
+      type: object
+      required: [id, name, email, message, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+        phone: { type: string, nullable: true }
+        subject: { type: string, nullable: true }
+        message: { type: string }
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+    ResetPasswordRequest:
+      type: object
+      required: [phone, code, password]
+      properties:
+        phone: { type: string }
+        code: { type: string }
+        password: { type: string, minLength: 8 }
+    AdminContactSubmissionUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [new, read, archived] }
+    QuickRepliesResponse:
+      type: object
+      required: [driver, rider]
+      properties:
+        driver:
+          type: array
+          description: Saved quick-reply phrases for the driver chat side. Empty when the user has not customised this side.
+          items: { type: string, minLength: 1, maxLength: 60 }
+          maxItems: 12
+        rider:
+          type: array
+          description: Saved quick-reply phrases for the rider chat side. Empty when the user has not customised this side.
+          items: { type: string, minLength: 1, maxLength: 60 }
+          maxItems: 12
+    UpdateQuickRepliesRequest:
+      type: object
+      required: [role, replies]
+      properties:
+        role:
+          type: string
+          enum: [driver, rider]
+        replies:
+          type: array
+          items: { type: string, minLength: 1, maxLength: 60 }
+          maxItems: 12
+    TripChatMessage:
+      type: object
+      required:
+        - id
+        - tripId
+        - senderId
+        - type
+        - content
+        - createdAt
+      properties:
+        id: { type: string, format: uuid }
+        tripId: { type: string, format: uuid }
+        senderId: { type: string, format: uuid }
+        type: { type: string, enum: [text, image, voice] }
+        content:
+          type: string
+          description: Plain text, or `/objects/...` path for image/voice attachments.
+        audioDurationMs:
+          type: integer
+          nullable: true
+          minimum: 1
+          description: Duration in milliseconds for voice messages.
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the recipient's client confirmed delivery (✓✓ grey).
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the recipient marked the message as read (✓✓ blue).
+        createdAt: { type: string, format: date-time }
+        senderFirstName: { type: string, nullable: true }
+        senderLastName: { type: string, nullable: true }
+        clientId:
+          type: string
+          nullable: true
+          description: Client-supplied id for optimistic-send reconciliation.
+    CreateTripMessageRequest:
+      type: object
+      required: [type, content]
+      properties:
+        type: { type: string, enum: [text, image, voice] }
+        content:
+          type: string
+          minLength: 1
+          maxLength: 4000
+        audioDurationMs:
+          type: integer
+          nullable: true
+          minimum: 1
+          maximum: 120000
+          description: Required for voice messages. Max 120000ms (2 minutes).
+        clientId:
+          type: string
+          nullable: true
+          maxLength: 64
+    MarkTripMessagesReadRequest:
+      type: object
+      properties:
+        upToMessageId:
+          type: string
+          format: uuid
+          nullable: true
+          description: |
+            If set, only mark messages with `createdAt <= this message's
+            createdAt` as read. Omit to mark all peer messages as read.
+    ChatUploadRequest:
+      type: object
+      required: [tripId, name, size, contentType]
+      properties:
+        tripId: { type: string, format: uuid }
+        name: { type: string, maxLength: 255 }
+        size:
+          type: integer
+          minimum: 1
+          description: File size in bytes (max 10 MiB).
+        contentType:
+          type: string
+          enum:
+            - image/png
+            - image/jpeg
+            - image/webp
+            - image/gif
+            - audio/m4a
+            - audio/mpeg
+            - audio/mp4
+            - audio/webm
+            - audio/aac
+            - audio/wav
+            - audio/ogg
+          description: Allowed MIME types for chat attachment uploads.
+    ChatUploadResponse:
+      type: object
+      required: [uploadURL, objectPath, metadata]
+      properties:
+        uploadURL: { type: string, format: uri }
+        objectPath: { type: string }
+        metadata:
+          type: object
+          required: [name, size, contentType]
+          properties:
+            name: { type: string }
+            size: { type: integer }
+            contentType: { type: string }
+    ChatFinalizeRequest:
+      type: object
+      required: [tripId, objectPath]
+      properties:
+        tripId: { type: string, format: uuid }
+        objectPath: { type: string }
+    AdminSitePageUpsert:
+      type: object
+      required: [title, content]
+      properties:
+        slug: { type: string }
+        lang: { type: string, enum: [en, fr, ar] }
+        status: { type: string, enum: [draft, published] }
+        title: { type: string }
+        content: { $ref: '#/components/schemas/SitePageContent' }
+        metaTitle: { type: string, nullable: true }
+        metaDescription: { type: string, nullable: true }
+        metaKeywords: { type: string, nullable: true }
+        ogTitle: { type: string, nullable: true }
+        ogDescription: { type: string, nullable: true }
+        ogImage: { type: string, nullable: true }
+        twitterCard: { type: string, enum: [summary, summary_large_image] }
+        canonicalUrl: { type: string, nullable: true }
+        robotsIndex: { type: boolean }
+    AdminCurrency:
+      type: object
+      required:
+        - code
+        - name
+        - symbol
+        - rateFromUsd
+        - lastUpdatedAt
+        - isActive
+        - isDefault
+        - decimalPlaces
+        - symbolPosition
+        - thousandsSeparator
+        - decimalSeparator
+        - sortOrder
+      properties:
+        code: { type: string, minLength: 3, maxLength: 3 }
+        name: { type: string }
+        symbol: { type: string }
+        rateFromUsd: { type: number, nullable: true }
+        lastUpdatedAt: { type: string, format: date-time, nullable: true }
+        isActive: { type: boolean }
+        isDefault: { type: boolean }
+        decimalPlaces: { type: integer, minimum: 0, maximum: 4 }
+        symbolPosition: { type: string, enum: [before, after] }
+        thousandsSeparator: { type: string, enum: [comma, dot, space] }
+        decimalSeparator: { type: string, enum: [dot, comma] }
+        sortOrder: { type: integer, minimum: 0 }
+    AdminCurrencyListResponse:
+      type: object
+      required: [currencies, defaultCode]
+      properties:
+        currencies:
+          type: array
+          items: { $ref: '#/components/schemas/AdminCurrency' }
+        defaultCode: { type: string }
+    AdminCurrencySingleResponse:
+      type: object
+      required: [currency, isCodeLocked]
+      properties:
+        currency: { $ref: '#/components/schemas/AdminCurrency' }
+        isCodeLocked: { type: boolean }
+    AdminCurrencyRefreshResponse:
+      type: object
+      required: [updated, fetchedAt, error, errorMessage, currencies, defaultCode]
+      properties:
+        updated: { type: integer, minimum: 0 }
+        fetchedAt: { type: string, format: date-time, nullable: true }
+        error: { type: string, nullable: true }
+        errorMessage: { type: string, nullable: true }
+        defaultCode: { type: string }
+        currencies:
+          type: array
+          items: { $ref: '#/components/schemas/AdminCurrency' }
+    AdminCurrencySetDefaultResponse:
+      type: object
+      required: [currency, defaultCode, currencies]
+      properties:
+        currency: { $ref: '#/components/schemas/AdminCurrency' }
+        defaultCode: { type: string }
+        currencies:
+          type: array
+          items: { $ref: '#/components/schemas/AdminCurrency' }
+    CreateAdminCurrencyRequest:
+      type: object
+      required: [code, name, symbol, rateFromUsd]
+      properties:
+        code: { type: string, minLength: 3, maxLength: 3, pattern: '^[A-Z]{3}$' }
+        name: { type: string, minLength: 1, maxLength: 64 }
+        symbol: { type: string, minLength: 1, maxLength: 8 }
+        rateFromUsd: { type: number, exclusiveMinimum: 0 }
+        isActive: { type: boolean }
+        decimalPlaces: { type: integer, minimum: 0, maximum: 4 }
+        symbolPosition: { type: string, enum: [before, after] }
+        thousandsSeparator: { type: string, enum: [comma, dot, space] }
+        decimalSeparator: { type: string, enum: [dot, comma] }
+    UpdateAdminCurrencyRequest:
+      type: object
+      properties:
+        code: { type: string, minLength: 3, maxLength: 3, pattern: '^[A-Z]{3}$' }
+        name: { type: string, minLength: 1, maxLength: 64 }
+        symbol: { type: string, minLength: 1, maxLength: 8 }
+        rateFromUsd: { type: number, exclusiveMinimum: 0 }
+        isActive: { type: boolean }
+        decimalPlaces: { type: integer, minimum: 0, maximum: 4 }
+        symbolPosition: { type: string, enum: [before, after] }
+        thousandsSeparator: { type: string, enum: [comma, dot, space] }
+        decimalSeparator: { type: string, enum: [dot, comma] }
+    BiddingNearbyRide:
+      type: object
+      required:
+        - id
+        - pickupLabel
+        - pickupAddress
+        - dropoffLabel
+        - dropoffAddress
+        - estimatedDistanceKm
+        - estimatedDurationMin
+        - distanceKm
+        - createdAt
+      properties:
+        id: { type: string, format: uuid }
+        pickupLabel: { type: string }
+        pickupAddress: { type: string }
+        dropoffLabel: { type: string }
+        dropoffAddress: { type: string }
+        pickupLat: { type: number, nullable: true }
+        pickupLng: { type: number, nullable: true }
+        initialFare: { type: number, nullable: true }
+        vehicleClass: { type: string, nullable: true }
+        vehicleTypeId: { type: string, format: uuid, nullable: true }
+        estimatedDistanceKm: { type: number }
+        estimatedDurationMin: { type: integer }
+        distanceKm: { type: number, description: "Pickup distance from the driver's current position, in kilometers." }
+        biddingExpiresAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+    BiddingNearbyResponse:
+      type: object
+      required: [rides]
+      properties:
+        rides:
+          type: array
+          items: { $ref: '#/components/schemas/BiddingNearbyRide' }
+    BiddingBid:
+      type: object
+      required: [id, rideId, driverId, amount, etaMin, status, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        rideId: { type: string, format: uuid }
+        driverId: { type: string, format: uuid }
+        amount: { type: number }
+        etaMin: { type: integer }
+        note: { type: string, nullable: true }
+        status:
+          type: string
+          enum: [active, accepted, rejected, cancelled, expired]
+        expiresAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+    CreateBiddingOfferBody:
+      type: object
+      required: [rideId, amount, etaMin]
+      properties:
+        rideId: { type: string, format: uuid }
+        amount: { type: number, exclusiveMinimum: 0, maximum: 100000 }
+        etaMin: { type: integer, minimum: 1, maximum: 60 }
+        note: { type: string, maxLength: 200 }
+    BiddingOfferResponse:
+      type: object
+      required: [bid]
+      properties:
+        bid: { $ref: '#/components/schemas/BiddingBid' }
+    AcceptBiddingOfferBody:
+      type: object
+      required: [bidId]
+      properties:
+        bidId: { type: string, format: uuid }
+    AcceptBiddingOfferResponse:
+      type: object
+      required: [ride, bid]
+      properties:
+        ride:
+          allOf:
+            - $ref: '#/components/schemas/AcceptedBiddingRide'
+        bid: { $ref: '#/components/schemas/BiddingBid' }
+    AcceptedBiddingRide:
+      type: object
+      description: |
+        Ride row after the rider accepted a bid. Status is `driver_arriving`,
+        `acceptedBidId` and `acceptedDriverId` point at the winning offer.
+        Includes the full `bids` array so the rider client can stay in sync
+        without a follow-up GET.
+      required:
+        - id
+        - riderId
+        - pickupLabel
+        - pickupAddress
+        - dropoffLabel
+        - dropoffAddress
+        - estimatedDistanceKm
+        - estimatedDurationMin
+        - status
+        - acceptedBidId
+        - acceptedDriverId
+        - bids
+        - createdAt
+      properties:
+        id: { type: string, format: uuid }
+        riderId: { type: string, format: uuid }
+        pickupLabel: { type: string }
+        pickupAddress: { type: string }
+        dropoffLabel: { type: string }
+        dropoffAddress: { type: string }
+        pickupLat: { type: number, nullable: true }
+        pickupLng: { type: number, nullable: true }
+        dropoffLat: { type: number, nullable: true }
+        dropoffLng: { type: number, nullable: true }
+        routePolyline: { type: string, nullable: true }
+        estimatedDistanceKm: { type: number }
+        estimatedDurationMin: { type: integer }
+        status:
+          type: string
+          enum: [bidding, driver_arriving, in_progress, completed, cancelled, queued, assigned_next]
+        acceptedBidId: { type: string, format: uuid, nullable: true }
+        acceptedDriverId: { type: string, format: uuid, nullable: true }
+        finalAmount: { type: number, nullable: true }
+        initialFare: { type: number, nullable: true }
+        biddingExpiresAt: { type: string, format: date-time, nullable: true }
+        bids:
+          type: array
+          items: { $ref: '#/components/schemas/BiddingBid' }
+        createdAt: { type: string, format: date-time }

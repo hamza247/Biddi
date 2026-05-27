@@ -1,0 +1,318 @@
+Fix the blank/crashed Leaflet map on Admin → Live Map / God’s View.
+
+Current problem:
+The God’s View page loads the layout, cards, filters, and driver panel, but the map area is blank gray. Leaflet attribution appears, but map tiles/markers do not render. The page says “0 drivers on the map” even though Total Drivers shows 2.
+
+This means there may be TWO bugs:
+1. Leaflet map/tile rendering is broken.
+2. Driver marker data/filtering is also broken.
+
+Do not guess. Debug the map rendering first, then driver markers.
+
+Critical requirements:
+- Do NOT rebuild the whole page.
+- Do NOT use fake driver data.
+- Do NOT hardcode markers.
+- Fix the root cause.
+- Keep Leaflet/OpenStreetMap unless the app already has a different working map provider.
+- After fixing, review the code and test.
+
+Step 1 — Inspect browser console errors
+
+Open the page and check console/network errors.
+
+Look specifically for:
+- Leaflet CSS not loaded
+- Leaflet marker icon missing
+- ResizeObserver errors
+- window is not defined
+- document is not defined
+- Map container is already initialized
+- Invalid LatLng object
+- Cannot read properties of undefined
+- Tile request blocked
+- Mixed content
+- CORS errors
+- OpenStreetMap tile 403/404
+- map container has zero height
+- duplicate Leaflet imports
+- SSR issue if using Next.js
+- React-Leaflet version mismatch
+
+Fix all map-related console errors.
+
+Step 2 — Verify Leaflet CSS
+
+Make sure Leaflet CSS is imported globally.
+
+If using React/Vite:
+Import in main entry file or app root:
+
+import "leaflet/dist/leaflet.css";
+
+If using Next.js:
+Import it in the correct client/global place.
+
+Without Leaflet CSS, map and icons may render incorrectly.
+
+Step 3 — Verify map container height
+
+The map container must have real height.
+
+Check CSS:
+- Parent div height
+- MapContainer height
+- flex/grid parent height
+- overflow rules
+- hidden tabs/panels
+- collapsed container
+- min-height
+
+Set a stable height if needed:
+
+.mapContainer {
+  height: 600px;
+  min-height: 600px;
+  width: 100%;
+}
+
+Do not rely only on height: 100% unless every parent has height.
+
+Step 4 — Verify MapContainer setup
+
+Find the God’s View map component.
+
+Make sure MapContainer has valid center and zoom:
+
+<MapContainer
+  center={[33.5731, -7.5898]}
+  zoom={6}
+  style={{ height: "100%", width: "100%" }}
+>
+  <TileLayer
+    attribution="&copy; OpenStreetMap contributors"
+    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+  />
+</MapContainer>
+
+If the current center is undefined/null, fix with safe fallback center.
+
+Use Morocco fallback center only when there are no valid driver/user coordinates.
+
+Step 5 — Fix map resize/invalidation
+
+If the map is inside a card, tab, responsive layout, or loads after data, Leaflet may need resize invalidation.
+
+Add a small component inside MapContainer:
+
+function ResizeMapFix() {
+  const map = useMap();
+
+  useEffect(() => {
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 200);
+  }, [map]);
+
+  return null;
+}
+
+Also call invalidateSize when:
+- layout changes
+- sidebar/filter changes
+- map becomes visible
+- drivers load
+
+Step 6 — Fix SSR/client-only issue if applicable
+
+If the project uses Next.js or SSR:
+- Leaflet must run client-side only.
+- The map component must have "use client".
+- Dynamically import map component with ssr: false if needed.
+
+Example:
+const LiveMap = dynamic(() => import("./LiveMap"), { ssr: false });
+
+Do not access window/document before client render.
+
+Step 7 — Fix Leaflet marker icons
+
+If markers are invisible because default icon URLs are broken, configure marker icons.
+
+Example:
+import L from "leaflet";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
+
+delete L.Icon.Default.prototype._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
+
+If using custom colored div icons, verify CSS and HTML.
+
+Step 8 — Debug tile layer/network
+
+Check Network tab for tile requests.
+
+If OSM tile requests fail:
+- Verify URL is correct
+- Verify https
+- Verify no ad blocker/CSP blocking
+- Verify tile container is requesting z/x/y tiles
+- Try fallback tile URL only if needed
+
+Use standard OSM first:
+https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+
+Step 9 — Driver data mismatch
+
+After the map background tiles render, fix markers.
+
+Current UI shows:
+- Total Drivers: 2
+- Online Drivers: 0
+- Active Rides: 0
+- Drivers panel filter selected: Way to drop-off
+- Drivers list: 0
+
+This may be because the selected filter hides the 2 drivers.
+
+Fix behavior:
+- Default filter should be “All” or “Available”, not “Way to drop-off”
+- If Total Drivers is 2, the driver panel should show those drivers when All is selected
+- Map should show all drivers with valid coordinates when All is selected
+- Filter should control both list and markers
+
+Add filter options:
+- All
+- Available
+- Not available
+- Way to pickup
+- Arrived at pickup
+- Way to drop-off
+- Stale location
+- Offline
+
+Step 10 — Normalize driver data
+
+Create one normalized driver array used by stats, list, and markers.
+
+Do not let stats use one API result and markers use another.
+
+Add helper:
+
+normalizeDriverForGodView(driver)
+
+Return:
+- id
+- name
+- phone
+- plate
+- vehicle
+- lat
+- lng
+- status
+- isOnline
+- hasValidLocation
+- lastLocationAt
+
+Coordinate rules:
+- Convert lat/lng to Number
+- Reject null/undefined/empty
+- Reject invalid range
+- Reject 0,0 unless intentionally valid
+
+Status rules:
+Map backend status values into:
+- available
+- not_available
+- way_to_pickup
+- arrived_pickup
+- way_to_dropoff
+- stale_location
+- offline
+- unknown
+
+Step 11 — Fix marker rendering
+
+Markers should render from:
+
+visibleDriversWithValidLocation.map(driver => <Marker ... />)
+
+Do not render markers from raw API data.
+
+Show bottom-left count:
+- “X drivers on the map”
+Where X equals visible drivers with valid coordinates.
+
+If drivers exist but have no valid location, show:
+“2 drivers found, but no valid live location”
+
+Step 12 — Add debug panel only in development
+
+Add temporary dev-only debug output:
+
+- Raw drivers count
+- Normalized drivers count
+- Valid location count
+- Visible markers count
+- Active filter
+- First driver lat/lng/status
+
+Only show when NODE_ENV is development or behind a debug flag.
+
+Step 13 — Real-time/polling
+
+The page says updates every 10s.
+
+Verify:
+- Polling actually runs every 10s
+- API is called
+- New data updates normalized driver state
+- Markers re-render
+- No duplicate intervals
+- Cleanup interval on unmount
+
+If socket exists, keep socket updates, but polling fallback must still work.
+
+Step 14 — Testing checklist
+
+Test exactly:
+
+1. Open God’s View
+2. Leaflet tiles display, not gray blank map
+3. No map-related console errors
+4. Map has correct height
+5. OSM tiles load in Network tab
+6. Default filter is All or Available
+7. Total Drivers count matches normalized data
+8. Drivers list shows drivers when filter allows it
+9. Map shows markers for drivers with valid coordinates
+10. Bottom-left count shows correct marker count
+11. Changing filter updates list and map
+12. Search updates list and map
+13. Recenter button works
+14. Polling refreshes every 10s
+15. No duplicate markers
+16. No “Map container is already initialized” error
+17. No Invalid LatLng error
+18. No broken marker icon errors
+19. Admin layout still works
+
+Step 15 — Final report
+
+After fixing, report:
+- Exact root cause of blank map
+- Exact root cause of missing drivers/markers
+- Files changed
+- Whether Leaflet CSS/icon fix was needed
+- Whether map height/invalidateSize fix was needed
+- API/driver data mapping used
+- Status mapping used
+- Tests completed
+- Remaining limitations

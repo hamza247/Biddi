@@ -1,0 +1,187 @@
+Add a two-way rating system for Biddi.
+
+Goal:
+After a completed trip:
+- Customer can rate the driver.
+- Driver can rate the customer.
+- Customer profile should show customer rating number.
+- Driver profile should show driver rating number if not already implemented.
+
+Important:
+- Do NOT rebuild the app.
+- Do NOT break existing trip completion flow.
+- Reuse existing users, drivers, trips, bookings, and ratings tables if available.
+- Keep code clean, simple, and optimized.
+
+Feature behavior:
+
+1. Customer rates driver
+After trip is completed, show rating screen in customer app:
+- Star rating 1–5
+- Optional comment
+- Submit button
+- Skip button if existing app allows skip rating
+
+2. Driver rates customer
+After trip is completed, show rating screen in driver app:
+- Star rating 1–5
+- Optional comment
+- Submit button
+- Skip button if allowed
+
+3. Profile rating display
+Customer app/profile should show:
+- Customer average rating
+- Number of ratings received
+
+Driver app/profile should show:
+- Driver average rating
+- Number of ratings received
+
+Example:
+4.8 ★
+Based on 24 ratings
+
+Database:
+Inspect existing rating tables first.
+
+If missing, create clean table:
+
+trip_ratings:
+- id
+- trip_id
+- rater_type: customer / driver
+- rater_id
+- rated_type: customer / driver
+- rated_id
+- rating
+- comment
+- created_at
+- updated_at
+
+Rules:
+- One customer-to-driver rating per trip.
+- One driver-to-customer rating per trip.
+- Rating must be 1–5.
+- Comment optional.
+- Only trip participants can rate.
+- Rating allowed only after trip is completed.
+- Prevent duplicate rating for same trip + rater_type.
+
+Optional cached fields:
+users:
+- average_rating
+- rating_count
+
+drivers:
+- average_rating
+- rating_count
+
+If cached fields exist, update them after rating submission.
+If not, calculate from trip_ratings or add safe fields.
+
+Backend APIs:
+Create or update endpoints:
+
+POST /api/trips/:tripId/rate-driver
+POST /api/trips/:tripId/rate-customer
+GET /api/users/:userId/rating-summary
+GET /api/drivers/:driverId/rating-summary
+
+Request:
+{
+  "rating": 5,
+  "comment": "Great passenger"
+}
+
+Response:
+{
+  "success": true,
+  "averageRating": 4.8,
+  "ratingCount": 24
+}
+
+Driver app UI:
+Create rating screen after trip completion:
+- Title: “Rate your customer”
+- Customer name/photo
+- 5-star selector
+- Optional comment box
+- Submit button
+- Skip button if enabled
+- Loading state
+- Success/error toast
+
+Customer app UI:
+Create or update rating screen:
+- Title: “Rate your driver”
+- Driver name/photo
+- 5-star selector
+- Optional comment box
+- Submit button
+- Skip button if enabled
+
+Profile UI:
+Customer profile:
+- Add rating number and star icon
+- Show average rating and rating count
+
+Driver profile:
+- Add/update rating display if needed
+
+Trip flow:
+After trip completed:
+- Driver should be routed to rate customer screen.
+- Customer should be routed to rate driver screen.
+- If rating already submitted, do not show again.
+- If skipped, continue normal flow.
+
+Validation:
+- Rating required unless skipped.
+- Rating must be between 1 and 5.
+- Comment max length, example 500 characters.
+- User cannot rate themselves.
+- User cannot rate trips they were not part of.
+- Cannot rate cancelled trips.
+
+Realtime / sync:
+If trip completion uses socket:
+- Emit event when trip completed.
+- Show rating screen on both apps.
+- If app is restarted, still detect pending rating and show it.
+
+Testing:
+Test:
+1. Customer rates driver after completed trip.
+2. Driver rates customer after completed trip.
+3. Duplicate rating is blocked.
+4. Cancelled trip cannot be rated.
+5. Rating average updates correctly.
+6. Rating count updates correctly.
+7. Customer profile shows customer rating.
+8. Driver profile shows driver rating.
+9. App restart still shows pending rating if not submitted.
+10. Existing trip completion flow still works.
+
+Code Quality:
+- Reusable RatingStars component.
+- Reusable RatingScreen layout if possible.
+- Clean service functions:
+  - submitTripRating()
+  - getRatingSummary()
+  - updateAverageRating()
+  - hasPendingRating()
+- No duplicate logic.
+- No fake ratings.
+- Proper error handling.
+- No console spam.
+
+Final report:
+Provide:
+- Files changed
+- Database changes
+- API routes
+- Rating flow explanation
+- Profile UI changes
+- Tests completed
+- Known limitations

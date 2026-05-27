@@ -1,0 +1,394 @@
+Build a modern mobile ride-hailing app called Biddi with a Node.js backend and PostgreSQL database.
+
+IMPORTANT PRODUCT RULES:
+1. This is ONE app for both customers and drivers.
+2. Default app mode is Rider.
+3. Inside the rider app there must be a "Become a Driver" button.
+4. If the user completes driver onboarding and is approved, the same account can switch between Rider Mode and Driver Mode from profile/settings.
+5. For now, ONLY support the bidding ride request concept.
+6. Do NOT build rentals, delivery, airport, pets, pool, corporate, later booking, wallet marketplace, or other service categories.
+7. Keep the UI very smooth, modern, and minimal.
+8. Requesting a ride must take only 1 or 2 taps after pickup/destination are known.
+9. Keep the design evolution close to the existing app style: purple branding, map-based screens, bottom sheets, simple cards. Do not redesign 180 degrees.
+
+TECH STACK:
+- Mobile app: React Native with Expo
+- Backend: Node.js + Express + TypeScript
+- Database: PostgreSQL
+- ORM: Prisma
+- Authentication: OTP phone login
+- Realtime: Socket.IO
+- Maps: Google Maps or Mapbox
+- State management: Zustand or React Query
+- Admin panel: simple web admin in Next.js or React
+- File uploads: Cloudinary or S3-compatible storage
+
+CORE APP CONCEPT:
+This app is a ride bidding app similar to inDrive:
+- Rider enters destination
+- Rider confirms ride request
+- Nearby drivers receive the ride request
+- Drivers submit bids (price offers)
+- Rider sees incoming bids in real time
+- Rider accepts one bid
+- Trip starts
+- Trip ends
+- Payment is marked as cash for v1
+- Ratings after trip
+
+UX / UI RULES:
+- Very few buttons
+- One primary action per screen
+- Large tap targets
+- Simple typography
+- Bottom sheet based ride flow
+- Keep purple as primary brand color
+- Minimal steps and minimal clutter
+- Avoid feature overload
+- Do not show many ride categories
+- Focus on speed, clarity, trust, and ease
+
+APP MODES:
+A) Rider Mode
+B) Driver Mode
+
+ACCOUNT MODEL:
+Use one account per person.
+A user can have:
+- rider profile
+- optional driver profile
+- app_mode = rider or driver
+- driver_status = not_applied / pending / approved / rejected / suspended
+
+MAIN USER FLOWS:
+
+RIDER FLOW:
+1. Login with phone OTP
+2. Home screen opens in Rider Mode
+3. Show pickup field (default current location)
+4. Show destination search
+5. Show one main CTA: "Request Ride"
+6. After tapping Request Ride, create a ride request and broadcast it to nearby approved drivers
+7. Rider enters bid collection screen
+8. Rider sees incoming driver bids in real time
+9. Rider selects a bid
+10. Assigned driver screen opens
+11. Live trip tracking
+12. Trip complete
+13. Rider can rate driver
+
+DRIVER FLOW:
+1. User taps "Become a Driver"
+2. Driver onboarding form
+3. Upload documents
+4. Add vehicle
+5. Admin approval required
+6. Once approved, user can switch app mode to Driver
+7. Driver home screen has online/offline toggle
+8. While online, driver receives nearby bidding ride requests
+9. Driver can place a bid amount
+10. If rider accepts the bid, trip is assigned
+11. Driver navigates to pickup
+12. Start trip
+13. End trip
+14. Driver can see earnings summary
+
+MINIMAL RIDER SCREENS:
+- Splash
+- OTP Login
+- Rider Home
+- Destination Search
+- Confirm Request Bottom Sheet
+- Searching / Collecting Bids
+- Bid List Screen
+- Driver Assigned
+- Live Trip Screen
+- Trip Completed
+- Rate Driver
+- Profile / Settings
+- Become a Driver
+- Switch Mode
+
+MINIMAL DRIVER SCREENS:
+- Driver Dashboard
+- Online / Offline
+- New Request Details
+- Place Bid
+- Waiting for Rider Response
+- Trip Navigation
+- Start Trip
+- End Trip
+- Earnings
+- Driver Profile / Documents / Vehicle
+
+HOME SCREEN RULES:
+The rider home screen must be radically simple:
+- Current pickup card
+- Destination input
+- One large main button: Request Ride
+- No category grid
+- No taxi/rental/other service selector
+- No feature clutter
+
+BIDDING RULES:
+- Rider creates a ride request with pickup, dropoff, estimated distance, estimated duration
+- Nearby online drivers within configurable radius receive the request
+- Drivers can submit one bid amount
+- Rider receives bids in realtime
+- Rider can accept one bid
+- Other bids automatically expire or become rejected
+- Once accepted, create a trip record
+- Track trip status transitions:
+  requested -> bidding -> driver_selected -> driver_arriving -> arrived -> in_progress -> completed
+  also support cancelled_by_rider / cancelled_by_driver / expired
+
+IMPORTANT DATABASE DESIGN INSTRUCTION:
+The existing SQL dump contains many legacy tables and many extra categories/features.
+Do NOT mirror the old database 1:1.
+Instead, create a cleaner V2 schema inspired by it.
+
+CREATE THESE CLEAN TABLES:
+
+1. users
+- id
+- phone
+- country_code
+- first_name
+- last_name
+- email nullable
+- avatar_url nullable
+- status
+- app_mode enum(rider, driver)
+- created_at
+- updated_at
+
+2. rider_profiles
+- id
+- user_id unique
+- default_payment_method enum(cash)
+- rating_avg
+- rating_count
+
+3. driver_profiles
+- id
+- user_id unique
+- approval_status enum(not_applied, pending, approved, rejected, suspended)
+- is_online boolean
+- current_lat
+- current_lng
+- current_heading nullable
+- rating_avg
+- rating_count
+- total_trips
+- created_at
+- updated_at
+
+4. driver_documents
+- id
+- driver_profile_id
+- type enum(driver_license, id_card, insurance, registration, selfie, vehicle_photo)
+- file_url
+- review_status enum(pending, approved, rejected)
+- rejection_reason nullable
+
+5. vehicles
+- id
+- driver_profile_id
+- make
+- model
+- year
+- color
+- plate_number
+- seats
+- is_active
+
+6. ride_requests
+- id
+- rider_user_id
+- pickup_address
+- pickup_lat
+- pickup_lng
+- dropoff_address
+- dropoff_lat
+- dropoff_lng
+- estimated_distance_km
+- estimated_duration_min
+- status enum(requested, bidding, driver_selected, driver_arriving, arrived, in_progress, completed, cancelled, expired)
+- selected_bid_id nullable
+- created_at
+- updated_at
+
+7. ride_bids
+- id
+- ride_request_id
+- driver_profile_id
+- bid_amount
+- currency_code
+- eta_to_pickup_min
+- distance_to_pickup_km
+- message nullable
+- status enum(active, accepted, rejected, expired, cancelled)
+- created_at
+- updated_at
+
+8. trips
+- id
+- ride_request_id unique
+- rider_user_id
+- driver_profile_id
+- vehicle_id
+- accepted_bid_id
+- trip_status enum(driver_arriving, arrived, in_progress, completed, cancelled)
+- started_at nullable
+- completed_at nullable
+- final_amount nullable
+- payment_method enum(cash)
+- payment_status enum(pending, paid)
+- created_at
+- updated_at
+
+9. trip_locations
+- id
+- trip_id
+- lat
+- lng
+- heading nullable
+- recorded_at
+
+10. ratings
+- id
+- trip_id
+- from_user_id
+- to_user_id
+- score
+- comment nullable
+- created_at
+
+11. device_sessions
+- id
+- user_id
+- device_token
+- platform
+- last_seen_at
+
+12. admin_users
+- id
+- name
+- email
+- password_hash
+- role
+
+API REQUIREMENTS:
+
+AUTH:
+- POST /auth/send-otp
+- POST /auth/verify-otp
+- GET /me
+- PATCH /me/profile
+- PATCH /me/app-mode
+
+DRIVER ONBOARDING:
+- POST /driver/apply
+- POST /driver/documents
+- POST /driver/vehicle
+- GET /driver/status
+- PATCH /driver/online-status
+
+RIDER REQUESTS:
+- POST /ride-requests
+- GET /ride-requests/:id
+- POST /ride-requests/:id/cancel
+- GET /ride-requests/:id/bids
+
+DRIVER BIDDING:
+- GET /driver/nearby-requests
+- POST /ride-requests/:id/bids
+- PATCH /bids/:id/cancel
+
+RIDER BID ACTIONS:
+- POST /bids/:id/accept
+- POST /bids/:id/reject
+
+TRIP:
+- GET /trips/:id
+- POST /trips/:id/arrive
+- POST /trips/:id/start
+- POST /trips/:id/end
+- POST /trips/:id/cancel
+- POST /trips/:id/rate
+
+REALTIME SOCKET EVENTS:
+- rider:ride_request_created
+- driver:new_ride_request
+- rider:new_bid
+- rider:bid_updated
+- driver:bid_accepted
+- driver:bid_rejected
+- rider:driver_location_updated
+- driver:trip_status_updated
+- rider:trip_status_updated
+
+ADMIN PANEL:
+Build a simple admin dashboard to:
+- review driver applications
+- approve/reject driver documents
+- view active ride requests
+- view active trips
+- suspend drivers
+- view users
+
+UI DETAILS:
+Rider Home:
+- top greeting
+- pickup card
+- destination input
+- large primary button "Request Ride"
+- no service grid
+
+Bids Screen:
+- list of driver offers as simple cards
+- show price, ETA, driver name, rating, vehicle
+- large Accept button
+- sort by price or ETA
+
+Driver Home:
+- online/offline switch
+- active request cards
+- each card has pickup, dropoff, ETA, and input to place bid
+- fast one-tap submit bid action
+
+TRIP SCREEN:
+- map
+- live route
+- rider/driver info card
+- call/chat placeholders
+- trip status banner
+- clean minimal controls
+
+IMPORTANT DEVELOPMENT RULES:
+- Build production-like clean folder structure
+- Use environment variables
+- Add seed script with sample users, drivers, vehicles, ride requests, and bids
+- Add input validation
+- Add error handling
+- Add Prisma migrations
+- Add README with setup instructions
+- Add mock mode if maps API key is missing
+- Make the app runnable locally
+
+DO NOT ADD:
+- Delivery
+- Rental
+- Airport special flow
+- Pets
+- Taxi pool
+- Corporate
+- Wallet complexity
+- Promo codes
+- Multi-service marketplace
+- Multiple customer categories
+- Video recording
+- Subscription features
+
+FINAL GOAL:
+Build a polished MVP of Biddi as a single mobile app with rider and driver modes, focused only on bidding-based ride requests, with a minimal smooth UI and backend ready for future expansion.

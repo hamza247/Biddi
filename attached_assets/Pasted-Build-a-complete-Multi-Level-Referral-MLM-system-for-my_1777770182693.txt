@@ -1,0 +1,250 @@
+Build a complete Multi-Level Referral (MLM) system for my rideshare app (Biddi) with clean, optimized, production-ready code.
+
+Important:
+- Do NOT over-engineer.
+- Do NOT add unnecessary complexity.
+- Keep logic efficient and scalable.
+- Avoid N+1 queries and heavy loops.
+- Use proper indexing and optimized queries.
+- Follow existing project structure (backend, DB, admin panel).
+- Code must be modular, readable, and testable.
+
+Goal:
+Implement a 3-level referral system where users earn rewards when their referred users complete rides.
+
+--------------------------------------------------
+CORE BUSINESS LOGIC
+--------------------------------------------------
+
+Referral works like this:
+
+Example:
+User A refers User B  
+User B refers User C  
+User C refers User D  
+
+Levels:
+- Level 1 → direct referral
+- Level 2 → referral of referral
+- Level 3 → third-level referral
+
+Earnings rule:
+- When a ride is COMPLETED:
+  distribute rewards up to 3 levels
+
+Example:
+Ride = 100 MAD  
+Level 1 = 4% → 4 MAD  
+Level 2 = 2% → 2 MAD  
+Level 3 = 1% → 1 MAD  
+
+Important:
+- Rewards ONLY after trip completion
+- No reward on cancelled rides
+- No duplicate reward
+- Prevent self-referral abuse
+
+--------------------------------------------------
+DATABASE DESIGN
+--------------------------------------------------
+
+Use existing tables if possible, otherwise extend cleanly.
+
+Required tables:
+
+1. users
+- id
+- referral_code (unique)
+- referred_by (user_id nullable)
+- created_at
+
+2. referral_levels
+- id
+- level (1,2,3)
+- percentage
+- is_active
+
+3. referral_earnings
+- id
+- user_id (who earns)
+- from_user_id (who generated the reward)
+- trip_id
+- level
+- percentage
+- amount
+- status (pending, credited)
+- created_at
+
+4. wallet_transactions (reuse if exists)
+- id
+- user_id
+- amount
+- type (credit/debit)
+- source (referral)
+- reference_id (trip_id)
+- created_at
+
+Indexes:
+- users.referral_code
+- users.referred_by
+- referral_earnings.user_id
+- referral_earnings.trip_id
+
+--------------------------------------------------
+REFERRAL FLOW
+--------------------------------------------------
+
+1. User signup:
+- Generate unique referral_code
+- Allow entering referral code
+- Save referred_by
+
+2. Trip completed:
+- Trigger referral calculation
+- Traverse up to 3 levels
+- Calculate reward
+- Insert referral_earnings
+- Credit wallet
+
+3. Reward distribution:
+- Stop if no parent exists
+- Stop at max 3 levels
+- Skip inactive levels
+
+--------------------------------------------------
+OPTIMIZED ALGORITHM (IMPORTANT)
+--------------------------------------------------
+
+Do NOT use recursive DB calls inside loops.
+
+Instead:
+- Fetch referral chain in ONE query if possible
+- Or loop max 3 times (acceptable)
+- Avoid deep recursion
+
+Pseudo logic:
+
+currentUser = trip.user_id
+
+for level in 1 → 3:
+  parent = get referred_by(currentUser)
+  if no parent → break
+
+  percentage = get level percentage
+  amount = trip_amount * percentage
+
+  create referral_earning
+  credit wallet
+
+  currentUser = parent
+
+--------------------------------------------------
+ADMIN PANEL (UI)
+--------------------------------------------------
+
+Build admin page: "Referral Settings"
+
+Features:
+- View referral levels (Level 1, 2, 3)
+- Edit percentage
+- Toggle active/inactive
+- Add level (max 3)
+- Show example calculation (like screenshot)
+
+Also build:
+- Referral earnings report
+- Filter by user, date, trip
+- Total earned per user
+
+--------------------------------------------------
+USER SIDE FEATURES
+--------------------------------------------------
+
+User app:
+- Show referral code
+- Share referral code
+- Show referral earnings summary
+- Show referral history:
+  - who joined
+  - earnings per level
+
+--------------------------------------------------
+SECURITY & VALIDATION
+--------------------------------------------------
+
+- Prevent self-referral
+- Prevent circular referrals
+- Validate referral code exists
+- Prevent duplicate reward for same trip
+- Only reward once per trip
+- Validate percentages (0–100)
+- Max 3 levels
+
+--------------------------------------------------
+PERFORMANCE REQUIREMENTS
+--------------------------------------------------
+
+- No heavy joins on every trip
+- Cache referral levels if needed
+- Use indexed queries
+- Avoid recalculating old trips
+- Use background job/queue if high traffic
+
+--------------------------------------------------
+TEST CASES
+--------------------------------------------------
+
+Test all:
+
+1. User registers with referral
+2. User registers without referral
+3. Trip completed → rewards distributed
+4. Cancelled trip → no rewards
+5. Level 1 only exists
+6. Full 3-level chain
+7. Missing parent in chain
+8. Duplicate trip processing prevention
+9. Wallet updated correctly
+10. Large number of users (performance)
+
+--------------------------------------------------
+CODE QUALITY
+--------------------------------------------------
+
+- Modular functions:
+  - createReferralChain()
+  - calculateReferralRewards()
+  - creditWallet()
+- No duplicate logic
+- Clean naming
+- Error handling
+- Logging (only useful logs)
+- No console spam
+
+--------------------------------------------------
+FINAL OUTPUT REQUIRED
+--------------------------------------------------
+
+After implementation provide:
+
+- Database schema changes
+- Backend services/functions
+- API endpoints
+- Admin UI changes
+- User UI changes
+- Example request/response
+- Test results
+- Performance considerations
+
+--------------------------------------------------
+IMPORTANT FINAL RULE
+--------------------------------------------------
+
+Do NOT make it complex like enterprise MLM systems.
+This is a SIMPLE 3-level referral reward system optimized for rideshare.
+
+Focus on:
+- correctness
+- performance
+- simplicity
+- maintainability

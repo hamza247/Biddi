@@ -1,0 +1,1 @@
+{"version":3,"file":"activeNotificationSoundCategories.d.ts","sourceRoot":"","sources":["../../../src/generated/types/activeNotificationSoundCategories.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AAEH,MAAM,WAAW,iCAAiC;IAChD,cAAc,EAAE,MAAM,CAAC;IACvB,SAAS,EAAE,MAAM,CAAC;IAClB,OAAO,EAAE,MAAM,CAAC;IAChB,WAAW,EAAE,MAAM,CAAC;CACrB"}

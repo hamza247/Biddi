@@ -1,0 +1,272 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1777314248406,
+      "tag": "0000_wandering_bug",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1777315125814,
+      "tag": "0001_loud_jetstream",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777318310465,
+      "tag": "0002_absent_wolf_cub",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1745712000000,
+      "tag": "0003_wallet_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1745798400000,
+      "tag": "0004_admin_action_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777419817812,
+      "tag": "0005_nifty_speedball",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777420111563,
+      "tag": "0006_organic_quasimodo",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777500000000,
+      "tag": "0007_driver_last_known_position",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777524785478,
+      "tag": "0008_faithful_bastion",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777749534819,
+      "tag": "0009_first_masque",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777754212679,
+      "tag": "0010_lame_marten_broadcloak",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1777850000000,
+      "tag": "0011_driver_cancellation_metrics",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1777757482894,
+      "tag": "0012_lumpy_squadron_supreme",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1777759888661,
+      "tag": "0013_useful_korg",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1777760934561,
+      "tag": "0014_green_lilith",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1777761000000,
+      "tag": "0015_rapid_black_widow",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1777770343330,
+      "tag": "0016_referrals",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1777771972139,
+      "tag": "0017_marvelous_spyke",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1777800000000,
+      "tag": "0018_notification_sounds",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1777810000000,
+      "tag": "0017_notification_sounds_build_list",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1777820000000,
+      "tag": "0019_airport_surcharges",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1778900000000,
+      "tag": "0020_site_pages",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1778910000000,
+      "tag": "0021_currencies",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1778920000000,
+      "tag": "0022_currency_rate_double",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1778930000000,
+      "tag": "0023_luxuriant_invaders",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1779000000000,
+      "tag": "0024_queued_rides",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1779100000000,
+      "tag": "0025_destination_mode",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1777790840675,
+      "tag": "0026_fat_rockslide",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1777792615916,
+      "tag": "0027_glossy_black_bird",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1777801345652,
+      "tag": "0028_messy_albert_cleary",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1777801387242,
+      "tag": "0029_blue_jack_murdock",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1777803036114,
+      "tag": "0030_aspiring_natasha_romanoff",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1779200000000,
+      "tag": "0031_currency_sort_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1777943061165,
+      "tag": "0032_lumpy_darkhawk",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1778048320051,
+      "tag": "0033_driver_live_positions",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1778057949960,
+      "tag": "0034_charming_shinko_yamashiro",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1779779184518,
+      "tag": "0035_boring_mariko_yashida",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1779824491709,
+      "tag": "0036_dear_krista_starr",
+      "breakpoints": true
+    }
+  ]
+}

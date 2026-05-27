@@ -1,0 +1,1 @@
+{"version":3,"file":"driverSavedPlacesResponse.d.ts","sourceRoot":"","sources":["../../../src/generated/types/driverSavedPlacesResponse.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,gBAAgB,EAAE,MAAM,oBAAoB,CAAC;AAE3D,MAAM,WAAW,yBAAyB;IACxC,IAAI,EAAE,gBAAgB,GAAG,IAAI,CAAC;IAC9B,IAAI,EAAE,gBAAgB,GAAG,IAAI,CAAC;IAC9B,OAAO,EAAE,gBAAgB,EAAE,CAAC;CAC7B"}

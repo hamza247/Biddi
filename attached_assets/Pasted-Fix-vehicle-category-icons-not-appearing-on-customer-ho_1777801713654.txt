@@ -1,0 +1,176 @@
+Fix vehicle category icons not appearing on customer home screen.
+
+Problem:
+Vehicle category icons (Eco, Comfort, Luxury, etc.) are blank/not rendering on the customer home screen. The category labels appear, but icons are missing.
+
+Goal:
+Make all category icons load and display correctly with proper fallback and performance.
+
+Important:
+- Do NOT hardcode icons unless fallback is needed
+- Do NOT break vehicle selection logic
+- Fix the root cause (data, path, rendering, or asset issue)
+- Keep UI clean and responsive
+
+--------------------------------------------------
+STEP 1 — FIND ROOT CAUSE
+--------------------------------------------------
+
+Search for:
+- vehicle categories
+- category icons
+- vehicle types
+- home screen categories component
+- icon / image rendering
+
+Check:
+
+1. API response:
+- Does backend return icon URL?
+- Field names:
+  icon
+  image
+  icon_url
+  vIcon
+  vehicle_icon
+
+2. Data example expected:
+{
+  "id": 1,
+  "name": "Eco",
+  "icon": "https://.../eco.png"
+}
+
+3. Console errors:
+- Failed to load image
+- 404 icon URL
+- undefined/null icon
+- invalid require() path
+- asset not found
+
+--------------------------------------------------
+STEP 2 — FIX DATA MAPPING
+--------------------------------------------------
+
+If API field name mismatch:
+- Map correct field to frontend
+Example:
+vehicle.icon = vehicle.icon_url || vehicle.image || vehicle.vIcon
+
+Ensure:
+- icon is always a valid string URL or local asset
+
+--------------------------------------------------
+STEP 3 — FIX IMAGE RENDERING
+--------------------------------------------------
+
+Check component:
+
+If using React Native:
+- Use <Image source={{ uri: iconUrl }} />
+- For local icons: require('path')
+
+Fix cases:
+- undefined uri
+- empty string
+- wrong format
+- missing https
+
+Add safe fallback:
+
+if (!iconUrl) use default icon
+
+--------------------------------------------------
+STEP 4 — ADD FALLBACK ICON
+--------------------------------------------------
+
+If icon missing:
+- Show default category icon
+- Example:
+  car icon
+  generic vehicle icon
+
+Do NOT leave blank space
+
+--------------------------------------------------
+STEP 5 — FIX ASSET PATH (IF LOCAL)
+--------------------------------------------------
+
+If icons are local:
+
+Check:
+- correct path
+- correct file name
+- case sensitivity
+- build system (Expo / RN)
+
+Example:
+require('../../assets/icons/eco.png')
+
+--------------------------------------------------
+STEP 6 — FIX NETWORK / PERMISSION
+--------------------------------------------------
+
+If icons from server:
+
+Check:
+- URL accessible in browser
+- HTTPS (not HTTP blocked)
+- CORS issues
+- CDN path correct
+- No expired links
+
+--------------------------------------------------
+STEP 7 — UI IMPROVEMENT
+--------------------------------------------------
+
+Ensure:
+- Icon container has fixed size
+- Center icon inside
+- Add loading placeholder
+- Smooth fade-in when loaded
+
+Optional:
+- Add subtle animation when switching categories
+
+--------------------------------------------------
+STEP 8 — TESTING
+--------------------------------------------------
+
+Test:
+
+1. Eco icon appears
+2. Comfort icon appears
+3. Luxury icon appears
+4. Icons load on slow network
+5. No broken image icon
+6. No blank space
+7. Fallback icon works
+8. Category selection still works
+9. Switching categories does not break UI
+10. No console errors
+
+--------------------------------------------------
+STEP 9 — CODE REVIEW
+--------------------------------------------------
+
+After fixing:
+
+- No undefined icon values
+- No broken image paths
+- No duplicated logic
+- Clean mapping
+- Proper fallback
+- Optimized rendering (no re-renders loop)
+
+--------------------------------------------------
+FINAL OUTPUT
+--------------------------------------------------
+
+Provide:
+
+- Root cause found
+- Files changed
+- API field used for icon
+- Fallback implementation
+- Tests completed

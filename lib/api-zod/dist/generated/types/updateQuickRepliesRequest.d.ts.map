@@ -1,0 +1,1 @@
+{"version":3,"file":"updateQuickRepliesRequest.d.ts","sourceRoot":"","sources":["../../../src/generated/types/updateQuickRepliesRequest.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,6BAA6B,EAAE,MAAM,iCAAiC,CAAC;AAErF,MAAM,WAAW,yBAAyB;IACxC,IAAI,EAAE,6BAA6B,CAAC;IACpC,mBAAmB;IACnB,OAAO,EAAE,MAAM,EAAE,CAAC;CACnB"}

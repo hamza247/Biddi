@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "quick_replies" jsonb DEFAULT '{}'::jsonb NOT NULL;

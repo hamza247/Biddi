@@ -1,0 +1,158 @@
+Build an Admin Airport Surcharge feature like the attached example.
+
+Goal:
+Allow admin to configure pickup and dropoff airport surcharges by airport location and vehicle type.
+
+Important:
+- Do NOT rebuild the app.
+- Use existing admin layout, database style, API structure, validation, and permissions.
+- Reuse existing location/vehicle/fare tables if available.
+- Keep code clean, simple, and optimized.
+- Do not over-engineer.
+
+Feature name:
+Airport Surcharge
+
+Admin pages needed:
+1. Airport Surcharge List
+2. Add Airport Surcharge
+3. Edit Airport Surcharge
+
+List page:
+Show table with:
+- Airport Location
+- Vehicle Type
+- Pickup Surcharge
+- Dropoff Surcharge
+- Status
+- Actions: Edit / Delete / Activate / Deactivate
+
+Add/Edit form fields:
+- Airport Location dropdown
+- Enter New Location button
+- Vehicle Type dropdown
+- Pickup Surcharge
+- Dropoff Surcharge
+- Status active/inactive
+- Save/Update button
+- Cancel button
+
+Airport Location:
+- Dropdown should load existing airport locations.
+- “Enter New Location” button should open a form/modal to add a new airport location.
+- New location should include:
+  - airport name
+  - city/country if available
+  - latitude
+  - longitude
+  - radius in meters or kilometers
+  - active/inactive
+
+Vehicle Type:
+- Load active vehicle types from the database.
+- Do not hardcode vehicle types unless fallback is needed.
+
+Surcharge logic:
+- Pickup surcharge applies when pickup location is inside the airport zone.
+- Dropoff surcharge applies when dropoff location is inside the airport zone.
+- Surcharge can be:
+  - multiplier, example: 2x
+  - or fixed amount, if existing app uses fixed amount
+
+For this version, use the existing app convention.
+If existing airport surcharge table uses multiplier, keep multiplier.
+If not clear, support:
+- surcharge_type: multiplier / fixed
+- pickup_surcharge_value
+- dropoff_surcharge_value
+
+Validation:
+- Airport location is required.
+- Vehicle type is required.
+- Pickup surcharge is required.
+- Dropoff surcharge is required.
+- Surcharge values must be positive numbers.
+- If multiplier is used, 1 means no surcharge.
+- Prevent duplicate airport surcharge for same airport + vehicle type.
+
+Backend/API:
+Create or update endpoints:
+
+GET /admin/airport-surcharges
+GET /admin/airport-surcharges/:id
+POST /admin/airport-surcharges
+PUT /admin/airport-surcharges/:id
+DELETE /admin/airport-surcharges/:id
+PATCH /admin/airport-surcharges/:id/status
+
+Airport location endpoints if missing:
+GET /admin/airport-locations
+POST /admin/airport-locations
+
+Fare calculation integration:
+When estimating or calculating ride fare:
+1. Check pickup coordinates.
+2. Check dropoff coordinates.
+3. Detect if pickup/dropoff is inside an active airport location radius.
+4. Match vehicle type.
+5. Apply pickup airport surcharge if pickup is airport.
+6. Apply dropoff airport surcharge if dropoff is airport.
+7. Show surcharge clearly in fare breakdown.
+
+Fare breakdown should include:
+- Base fare
+- Distance fare
+- Time fare
+- Airport pickup surcharge if applied
+- Airport dropoff surcharge if applied
+- Total fare
+
+Helper functions:
+- isPointInsideAirportZone(lat, lng, airport)
+- getAirportSurchargeForRide(pickup, dropoff, vehicleTypeId)
+- applyAirportSurcharge(fare, surcharge)
+
+UI/UX:
+- Clean form layout
+- Responsive design
+- Loading state
+- Empty state
+- Error state
+- Success/error toast
+- Delete confirmation modal
+- Clear helper note:
+  “Enter 1 if you do not want to add surcharge” if multiplier mode is used.
+
+Testing:
+Test these cases:
+1. Add airport location.
+2. Add surcharge for airport + vehicle type.
+3. Duplicate airport + vehicle type is blocked.
+4. Edit pickup surcharge.
+5. Edit dropoff surcharge.
+6. Delete surcharge.
+7. Activate/deactivate surcharge.
+8. Fare estimate applies pickup airport surcharge.
+9. Fare estimate applies dropoff airport surcharge.
+10. No surcharge applies when pickup/dropoff is outside airport zone.
+11. Correct vehicle type surcharge is used.
+12. Existing ride booking flow still works.
+
+Final code review:
+After finishing, review all changed files and confirm:
+- No broken imports
+- No broken admin pages
+- No broken fare calculation
+- No duplicate surcharge records
+- Clean validation
+- Clean API responses
+- No unnecessary complex code
+
+Final report:
+Provide:
+- Files changed
+- Database changes
+- API routes added/updated
+- Fare calculation changes
+- Test results
+- Any known limitations

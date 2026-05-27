@@ -1,0 +1,1 @@
+{"version":3,"file":"adminCurrencySetDefaultResponse.d.ts","sourceRoot":"","sources":["../../../src/generated/types/adminCurrencySetDefaultResponse.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,aAAa,EAAE,MAAM,iBAAiB,CAAC;AAErD,MAAM,WAAW,+BAA+B;IAC9C,QAAQ,EAAE,aAAa,CAAC;IACxB,WAAW,EAAE,MAAM,CAAC;IACpB,UAAU,EAAE,aAAa,EAAE,CAAC;CAC7B"}

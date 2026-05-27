@@ -1,0 +1,190 @@
+Build a Driver Promotions / Quest Bonus system like Uber.
+
+Goal:
+Allow admins to create promotions where drivers earn a bonus after completing a required number of rides within a specific day/week/time window.
+
+Example:
+“Complete 1 trip between Sat 6:00 PM and Sun 2:00 AM to earn $2.”
+
+Important:
+- Do NOT rebuild the app.
+- Use existing driver, trip, wallet, admin, and notification systems.
+- Keep code clean, simple, and optimized.
+- Do NOT over-engineer.
+- Rewards must be credited only once.
+- Cancelled rides do NOT count.
+
+Admin Panel Feature:
+Create page: Driver Promotions
+
+Admin can:
+- Create promotion
+- Edit promotion
+- Delete promotion
+- Activate/deactivate promotion
+- View driver progress
+- View completed rewards
+
+Promotion fields:
+- Promotion title
+- Description
+- Bonus amount
+- Currency
+- Required completed trips
+- Start date/time
+- End date/time
+- Repeat type: none / daily / weekly
+- Eligible area/zone optional
+- Eligible vehicle type optional
+- Eligible drivers: all / selected drivers
+- Status active/inactive
+
+Database:
+Create or reuse tables:
+
+driver_promotions:
+- id
+- title
+- description
+- bonus_amount
+- currency
+- required_trips
+- start_at
+- end_at
+- repeat_type
+- zone_id nullable
+- vehicle_type_id nullable
+- eligible_driver_type
+- is_active
+- created_at
+- updated_at
+
+driver_promotion_progress:
+- id
+- promotion_id
+- driver_id
+- completed_trips_count
+- is_completed
+- reward_credited
+- completed_at
+- created_at
+- updated_at
+
+driver_promotion_trip_logs:
+- id
+- promotion_id
+- driver_id
+- trip_id
+- created_at
+
+Backend Logic:
+When a trip is completed:
+
+1. Check active promotions.
+2. Verify trip completed within promotion time window.
+3. Verify driver is eligible.
+4. Verify vehicle type if promotion has vehicle restriction.
+5. Verify zone/area if promotion has location restriction.
+6. Check trip was not already counted for this promotion.
+7. Add trip to promotion progress.
+8. If completed_trips_count reaches required_trips:
+   - Mark promotion progress completed.
+   - Credit driver wallet.
+   - Create wallet transaction.
+   - Send notification to driver.
+9. Prevent duplicate bonus credit.
+
+Helper functions:
+- getActiveDriverPromotions(driverId, trip)
+- isTripEligibleForPromotion(trip, promotion)
+- updatePromotionProgress(driverId, tripId)
+- creditPromotionBonus(driverId, promotionId)
+- getDriverPromotionProgress(driverId)
+
+Driver App UI:
+Create screen: Quest Progress / Promotions
+
+Show:
+- Promotion title
+- Date/time window
+- Message:
+  “Complete X more trips to earn $Y”
+- Progress:
+  “0/1 trips”
+  “2/5 trips”
+- Bonus amount
+- Locked/unlocked state
+- Progress bar
+- Eligible zone map preview if available
+- Completed state:
+  “Bonus earned”
+- Empty state:
+  “No active promotions right now”
+
+Driver home/discover screen:
+- Add promotion card/banner:
+  “Complete 3 trips today and earn $10”
+- Tap opens promotion detail.
+
+Rules:
+- Only completed trips count.
+- Cancelled trips do not count.
+- Trips outside start/end time do not count.
+- Same trip cannot count twice.
+- Bonus credited once per promotion per driver unless repeat cycle allows new progress.
+- If repeat weekly/daily, create a new progress cycle per period.
+
+Notifications:
+Send push notification:
+- When promotion starts
+- When driver is close to completing:
+  “Complete 1 more trip to earn $2”
+- When bonus is earned:
+  “You earned a $2 quest bonus!”
+
+Admin Reports:
+Show:
+- Promotion name
+- Active drivers
+- Completed drivers
+- Total bonuses paid
+- Driver progress list
+- Trip logs
+
+Testing:
+Test:
+1. Admin creates daily promotion.
+2. Driver sees promotion in app.
+3. Driver completes eligible trip.
+4. Progress updates immediately.
+5. Driver completes required number of trips.
+6. Bonus is credited to wallet.
+7. Wallet transaction is created.
+8. Duplicate reward is blocked.
+9. Cancelled trip does not count.
+10. Trip outside time window does not count.
+11. Inactive promotion does not count.
+12. Driver app shows completed state.
+13. Admin report shows correct progress.
+
+Code Quality:
+- Clean modular services
+- No duplicate reward logic
+- No heavy frontend calculations
+- Use backend as source of truth
+- Use indexed DB queries
+- Proper error handling
+- No console spam
+- No fake data
+
+Final Report:
+After implementation provide:
+- Files changed
+- DB changes
+- API routes
+- Promotion calculation logic
+- Wallet credit logic
+- Driver UI changes
+- Admin UI changes
+- Tests completed
+- Known limitations

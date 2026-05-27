@@ -1,0 +1,186 @@
+Build a queued ride request system for drivers who are already on an active trip.
+
+Goal:
+Allow a driver who already has a rider to receive and accept another upcoming ride near their current dropoff location. The new ride should be queued and start only after the current ride is completed.
+
+Important:
+- Do NOT rebuild the app.
+- Do NOT break the existing ride request flow.
+- Do NOT allow two active rides at the same time.
+- Queued rides must be separate from active rides.
+- Keep code simple, optimized, and production-ready.
+
+Feature behavior:
+
+1. Driver is on active trip
+- Driver status = on_trip / way_to_dropoff
+- Driver has current ride with dropoff coordinates
+
+2. System searches upcoming ride requests near that dropoff location
+- Match requests within configurable radius
+- Example radius: 3–10 km
+- Use admin setting:
+  “Enable queued ride requests”
+  “Queue request radius near dropoff”
+  “Send queued request before trip end distance”
+  “Send queued request before trip end minutes”
+
+3. Driver receives queued request
+- Show clear label: “Next Ride Request”
+- Show pickup location
+- Show pickup distance from current dropoff
+- Show estimated fare
+- Show accept/decline buttons
+- Explain: “This ride will start after your current trip ends.”
+
+4. If driver accepts
+- New ride status becomes queued / assigned_next
+- Driver keeps current ride active
+- User of next ride sees:
+  “Driver is finishing a nearby trip”
+- Show estimated time until driver arrives after dropoff
+
+5. After current trip completes
+- System automatically moves queued ride to active/accepted
+- Driver app transitions to next pickup flow
+- User app receives update
+
+Required statuses:
+- pending
+- accepted
+- on_trip
+- completed
+- cancelled
+- queued
+- assigned_next
+
+Database:
+Add fields if missing:
+rides/bookings:
+- queued_driver_id
+- queue_status
+- queued_at
+- queue_position
+- previous_trip_id
+- expected_start_after_trip_id
+
+Or create table:
+driver_queued_rides:
+- id
+- driver_id
+- current_trip_id
+- next_trip_id
+- status: pending / accepted / cancelled / expired / activated
+- pickup_lat
+- pickup_lng
+- dropoff_lat
+- dropoff_lng
+- estimated_pickup_after_minutes
+- created_at
+- updated_at
+
+Backend endpoints:
+- GET /api/driver/queued-requests
+- POST /api/driver/queued-requests/:rideId/accept
+- POST /api/driver/queued-requests/:rideId/decline
+- POST /api/system/activate-next-queued-ride
+
+Matching logic:
+When a driver is near completing a trip:
+1. Get current trip dropoff lat/lng.
+2. Find pending ride requests near that dropoff.
+3. Filter by vehicle type.
+4. Filter by service type if applicable.
+5. Filter by driver eligibility.
+6. Exclude cancelled/expired rides.
+7. Sort by nearest pickup to current dropoff.
+8. Send best request to driver.
+
+Use helper functions:
+- findQueuedRideCandidates(driverId, currentTripId)
+- calculateDistanceKm(pointA, pointB)
+- canDriverReceiveQueuedRequest(driverId)
+- acceptQueuedRide(driverId, rideId, currentTripId)
+- activateQueuedRideAfterCompletion(driverId, completedTripId)
+
+Socket.IO / realtime:
+Add or fix events:
+- queuedRideRequest
+- queuedRideAccepted
+- queuedRideDeclined
+- queuedRideActivated
+- currentTripCompleted
+
+Driver app UI:
+- Show queued request card while current trip is active
+- Do not replace current trip screen
+- Card should be small but clear
+- Accept / Decline buttons
+- Timer countdown if request expires
+- Badge: “Next Ride”
+
+User app UI:
+For next rider:
+- Show status: “Driver assigned”
+- If driver is still on another trip, show:
+  “Driver is completing a nearby ride”
+- Show ETA after current dropoff
+
+Admin settings:
+Add settings:
+- Enable queued ride requests: Yes/No
+- Queue request radius: number
+- Queue request expiry seconds: number
+- Send queued request before trip end distance: number
+- Send queued request before trip end minutes: number
+- Maximum queued rides per driver: default 1
+
+Safety rules:
+- Driver can only have one active trip.
+- Driver can only have one queued ride by default.
+- Queued ride must be same vehicle type/service type.
+- If current trip is cancelled, release queued ride.
+- If queued ride is cancelled by user, remove from queue.
+- If driver goes offline, release queued ride.
+- If driver declines, do not resend same ride immediately.
+- If current trip completes, queued ride activates automatically.
+
+Testing:
+Test:
+1. Driver on active trip receives nearby queued request.
+2. Driver accepts queued request.
+3. Current ride continues normally.
+4. New rider sees driver assigned but finishing another ride.
+5. Current trip completes.
+6. Queued ride becomes active automatically.
+7. Driver app moves to next pickup.
+8. User app receives status update.
+9. Driver cannot accept two queued rides.
+10. Queued ride cancels correctly.
+11. Driver offline releases queued ride.
+12. Vehicle type mismatch is blocked.
+13. Far pickup is not sent.
+14. Existing normal ride request flow still works.
+
+Code review:
+After implementation, check:
+- No duplicate ride assignments
+- No race conditions
+- No two active trips for same driver
+- No stale queued rides
+- Socket events cleaned up
+- Existing trip flow still works
+- Clean error handling
+- Optimized queries
+- No unnecessary complex code
+
+Final report:
+Provide:
+- Files changed
+- DB changes
+- API routes
+- Socket events
+- Matching logic
+- UI changes
+- Tests completed
+- Known limitations

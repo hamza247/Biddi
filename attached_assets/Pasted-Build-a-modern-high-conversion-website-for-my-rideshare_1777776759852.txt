@@ -1,0 +1,257 @@
+Build a modern, high-conversion website for my rideshare app “BiddiRides” with a creative UI and a full admin CMS to manage all pages and SEO.
+
+Important:
+- Do NOT use heavy frameworks unnecessarily
+- Keep performance fast (Lighthouse optimized)
+- SEO-first structure
+- Mobile-first responsive design
+- Clean, modular, scalable code
+- Use existing backend if possible
+
+--------------------------------------------------
+PART 1 — BRAND & DESIGN SYSTEM
+--------------------------------------------------
+
+Create a modern design system for the website.
+
+Brand style:
+- Clean, modern, similar to Uber/Careem
+- Minimal but premium
+
+Color palette:
+- Primary: #3a0ca2  
+- Secondary: #f56f48  
+- Accent: #22C55E (Green for success/earnings)
+- Danger: #EF4444 (Red)
+- Background: #F8FAFC (Light gray)
+- Text: #1F2937
+
+Typography:
+- Headings: bold, modern (Inter / Poppins)
+- Body: clean readable
+
+UI elements:
+- Rounded buttons
+- Soft shadows
+- Smooth hover animations
+- Card-based layout
+
+--------------------------------------------------
+PART 2 — LANDING PAGE (HOME PAGE)
+--------------------------------------------------
+
+Create a high-conversion landing page:
+
+Sections:
+
+1. Hero Section
+- Headline: “Ride smarter with Biddi”
+- Subtext
+- CTA buttons:
+  - Download App
+  - Become a Driver
+- App preview image
+
+2. Features Section
+- Safe rides
+- Fast pickup
+- Affordable pricing
+- Driver earnings
+
+3. How It Works
+- Step 1: Request ride
+- Step 2: Driver arrives
+- Step 3: Ride & pay
+
+4. Driver Section
+- Earn money with Biddi
+- CTA: Join as Driver
+
+5. Heatmap/Surge section (optional visual)
+
+6. Testimonials
+
+7. FAQ preview
+
+8. Footer
+- Links
+- Social media
+- Contact
+
+--------------------------------------------------
+PART 3 — STATIC PAGES TO BUILD
+--------------------------------------------------
+
+Create these pages:
+
+- Home Page
+- About Us
+- Contact Us
+- FAQ / Centre d'aide
+- Help Center
+- How It Works
+- Sign In
+- Sign Up
+- Forgot Password
+- 404 Error
+- Maintenance Page
+- Privacy Policy
+- Terms & Conditions
+- Legal
+- Trust, Safety & Insurance
+- Safety Guidelines
+- InterCity Detail Page
+- Rental Packages Detail Page
+
+Each page:
+- Clean layout
+- SEO optimized
+- Editable via admin
+
+--------------------------------------------------
+PART 4 — ADMIN CMS (VERY IMPORTANT)
+--------------------------------------------------
+
+Create Admin panel to manage ALL website content.
+
+Admin should be able to:
+
+1. Manage Pages
+- Create page
+- Edit page
+- Delete page
+- Publish/unpublish
+
+2. Edit content:
+- Title
+- Subtitle
+- Sections
+- Images
+- Buttons
+- Translations (EN / FR optional)
+
+3. Rich text editor:
+- Use WYSIWYG editor (like Quill or TinyMCE)
+
+--------------------------------------------------
+PART 5 — SEO MANAGEMENT
+--------------------------------------------------
+
+Each page must support:
+
+- Meta Title
+- Meta Description
+- Keywords
+- Open Graph (Facebook)
+- Twitter Cards
+- Slug (URL)
+- Canonical URL
+- Index / noindex toggle
+
+Auto-generate:
+- sitemap.xml
+- robots.txt
+
+--------------------------------------------------
+PART 6 — MULTI-LANGUAGE (OPTIONAL)
+--------------------------------------------------
+
+Support:
+- English
+- French (Centre d’aide)
+
+Structure:
+- /en/
+- /fr/
+
+Admin can edit content per language.
+
+--------------------------------------------------
+PART 7 — PERFORMANCE & TECH
+--------------------------------------------------
+
+Requirements:
+
+- Fast load (<2s)
+- Lazy load images
+- Optimized images
+- Clean routing
+- SEO-friendly URLs
+
+Tech (recommended):
+- Frontend: Next.js or React
+- Backend: existing Node/PHP
+- CMS: custom admin panel
+
+--------------------------------------------------
+PART 8 — CONTACT & FORMS
+--------------------------------------------------
+
+Contact page:
+- Name
+- Email
+- Message
+- Store in DB
+- Send email notification
+
+--------------------------------------------------
+PART 9 — AUTH PAGES
+--------------------------------------------------
+
+Create:
+- Sign In page
+- Sign Up page
+- Forgot Password
+
+Design:
+- Clean modern UI
+- Form validation
+- API integration
+
+--------------------------------------------------
+PART 10 — 404 & MAINTENANCE
+--------------------------------------------------
+
+404 Page:
+- Friendly message
+- Back to home button
+
+Maintenance Page:
+- Message from admin
+- Toggle ON/OFF from admin
+
+--------------------------------------------------
+PART 11 — TESTING
+--------------------------------------------------
+
+Test:
+- All pages load
+- Mobile responsive
+- SEO tags working
+- Admin edits reflect instantly
+- Forms working
+- No broken links
+- Fast performance
+
+--------------------------------------------------
+FINAL OUTPUT REQUIRED
+--------------------------------------------------
+
+Provide:
+
+- Full page structure
+- Admin CMS features
+- SEO implementation
+- Routing system
+- API endpoints
+- Database structure for pages
+- Performance optimizations
+- Test results
+
+--------------------------------------------------
+IMPORTANT RULE
+--------------------------------------------------
+
+Keep design CLEAN, FAST, and MODERN.
+Do NOT overcomplicate the CMS.
+Focus on usability and performance.

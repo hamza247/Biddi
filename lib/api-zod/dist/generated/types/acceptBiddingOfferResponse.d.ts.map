@@ -1,0 +1,1 @@
+{"version":3,"file":"acceptBiddingOfferResponse.d.ts","sourceRoot":"","sources":["../../../src/generated/types/acceptBiddingOfferResponse.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,mBAAmB,EAAE,MAAM,uBAAuB,CAAC;AACjE,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,cAAc,CAAC;AAE/C,MAAM,WAAW,0BAA0B;IACzC,IAAI,EAAE,mBAAmB,CAAC;IAC1B,GAAG,EAAE,UAAU,CAAC;CACjB"}

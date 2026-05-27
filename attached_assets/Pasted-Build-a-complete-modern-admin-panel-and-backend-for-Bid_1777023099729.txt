@@ -1,0 +1,1024 @@
+Build a complete modern admin panel and backend for Biddi Rides.
+
+Project:
+Biddi Rides is a simplified ride-hailing / ride-bidding app.
+There is ONE mobile app for both riders and drivers.
+The app supports only the bidding ride request concept for now.
+Do not build rental, hotel, delivery, intercity, pool, corporate, MLM, gift card, or multi-service marketplace features.
+
+Admin goal:
+Create a clean professional admin dashboard inspired by the old screenshots, but simplify it for the new Biddi MVP.
+
+TECH STACK:
+Frontend admin:
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- shadcn/ui
+- TanStack Table
+- React Query
+- React Hook Form
+- Zod
+- Recharts
+- Mapbox or MapLibre for maps
+
+Backend:
+- Node.js
+- Express
+- TypeScript
+- Prisma
+- PostgreSQL
+- Zod validation
+- JWT admin auth
+- Socket.IO for live map events
+
+DESIGN STYLE:
+Keep visual style close to current screenshots:
+- left sidebar
+- top header
+- white cards
+- soft gray page background
+- rounded cards
+- table-heavy admin layout
+- Biddi logo area
+- blue/purple accent color
+- clean icons
+- professional SaaS dashboard look
+
+But simplify old clutter:
+Remove old menus/features:
+- Hotels
+- Rental Packages
+- Intercity Rides
+- Taxi Fleet Company
+- MLM Referral Settings
+- Gift Cards
+- Website CMS pages unless needed later
+- Service Categories
+- Pool / Moto / Cargo / Electric categories
+- Referral campaigns
+- Complex wallet modules
+
+FINAL SIDEBAR MENU:
+1. Dashboard
+2. Live Map / God’s View
+3. Heat View
+4. Users
+5. Drivers
+6. Driver Applications
+7. Vehicles
+8. Vehicle Types
+9. Service Areas / Geo Fence
+10. Ride Requests
+11. Bids
+12. Trips
+13. Payments
+14. Reviews
+15. Reports
+16. App Content
+17. Notifications
+18. Settings
+
+TOP HEADER:
+Every page must have:
+- hamburger menu
+- title: "Biddirides Admin"
+- subtitle: "Super Administrator"
+- right icons:
+  - profile
+  - alerts
+  - logs/tasks
+  - settings
+  - logout
+
+CORE DATABASE MODELS:
+Create Prisma schema for:
+
+User:
+- id
+- phone
+- countryCode
+- firstName
+- lastName
+- email nullable
+- avatarUrl nullable
+- status enum(active, blocked, deleted)
+- appMode enum(rider, driver)
+- createdAt
+- updatedAt
+
+RiderProfile:
+- id
+- userId unique
+- ratingAvg
+- ratingCount
+- totalTrips
+
+DriverProfile:
+- id
+- userId unique
+- approvalStatus enum(not_applied, pending, approved, rejected, suspended)
+- isOnline boolean
+- currentLat nullable
+- currentLng nullable
+- currentHeading nullable
+- ratingAvg
+- ratingCount
+- totalTrips
+- acceptanceRate
+- cancellationRate
+- rewardLevelId nullable
+- createdAt
+- updatedAt
+
+DriverDocument:
+- id
+- driverProfileId
+- type enum(driver_license, id_card, insurance, registration, selfie, vehicle_photo)
+- fileUrl
+- reviewStatus enum(pending, approved, rejected)
+- rejectionReason nullable
+- createdAt
+
+Vehicle:
+- id
+- driverProfileId
+- vehicleTypeId nullable
+- make
+- model
+- year
+- color
+- plateNumber
+- seats
+- status enum(active, inactive, rejected)
+- createdAt
+- updatedAt
+
+VehicleType:
+- id
+- name
+- description nullable
+- pricePerKm
+- pricePerMin
+- baseFare
+- minimumFare
+- commissionPercent
+- personCapacity
+- displayOrder
+- active boolean
+- nonSelectedImageUrl nullable
+- selectedImageUrl nullable
+- createdAt
+- updatedAt
+
+ServiceArea:
+- id
+- name
+- country
+- type enum(service_area, restricted_area, pricing_zone)
+- polygonJson
+- active boolean
+- createdAt
+- updatedAt
+
+RideRequest:
+- id
+- riderUserId
+- pickupAddress
+- pickupLat
+- pickupLng
+- dropoffAddress
+- dropoffLat
+- dropoffLng
+- estimatedDistanceKm
+- estimatedDurationMin
+- status enum(requested, bidding, driver_selected, driver_arriving, arrived, in_progress, completed, cancelled, expired)
+- selectedBidId nullable
+- createdAt
+- updatedAt
+
+RideBid:
+- id
+- rideRequestId
+- driverProfileId
+- bidAmount
+- currencyCode default MAD
+- etaToPickupMin
+- distanceToPickupKm
+- message nullable
+- status enum(active, accepted, rejected, expired, cancelled)
+- createdAt
+- updatedAt
+
+Trip:
+- id
+- rideRequestId unique
+- riderUserId
+- driverProfileId
+- vehicleId nullable
+- acceptedBidId
+- tripStatus enum(driver_arriving, arrived, in_progress, completed, cancelled)
+- startedAt nullable
+- completedAt nullable
+- finalAmount nullable
+- paymentMethod enum(cash)
+- paymentStatus enum(pending, paid)
+- createdAt
+- updatedAt
+
+Payment:
+- id
+- tripId
+- amount
+- currencyCode default MAD
+- method enum(cash)
+- status enum(pending, paid, failed, refunded)
+- adminCommission
+- driverEarning
+- createdAt
+
+Rating:
+- id
+- tripId
+- fromUserId
+- toUserId
+- score
+- comment nullable
+- createdAt
+
+RewardLevel:
+- id
+- name
+- minimumTrips
+- minimumRating
+- maxCancellationRate
+- minAcceptanceRate
+- rewardAmount
+- imageUrl nullable
+- active boolean
+- createdAt
+- updatedAt
+
+AppBanner:
+- id
+- title
+- imageUrl
+- placement enum(rider_home, driver_home, onboarding)
+- active boolean
+- displayOrder
+- createdAt
+- updatedAt
+
+AppContent:
+- id
+- key
+- title
+- body
+- language
+- active boolean
+- createdAt
+- updatedAt
+
+CancellationReason:
+- id
+- text
+- appliesTo enum(rider, driver, both)
+- active boolean
+
+NotificationTemplate:
+- id
+- type enum(sms, email, push)
+- key
+- title
+- body
+- active boolean
+
+AdminUser:
+- id
+- name
+- email
+- passwordHash
+- role enum(super_admin, admin, support)
+- active boolean
+- createdAt
+- updatedAt
+
+BACKEND ARCHITECTURE:
+Use clean modular architecture:
+
+backend/src/
+  app/
+    server.ts
+    app.ts
+    env.ts
+    prisma.ts
+    socket.ts
+  modules/
+    adminAuth/
+    dashboard/
+    users/
+    drivers/
+    driverApplications/
+    vehicles/
+    vehicleTypes/
+    serviceAreas/
+    rideRequests/
+    bids/
+    trips/
+    payments/
+    reviews/
+    reports/
+    appContent/
+    notifications/
+    settings/
+  shared/
+    middleware/
+    utils/
+    types/
+    constants/
+
+Each module should have:
+- routes.ts
+- controller.ts
+- service.ts
+- repository.ts
+- validation.ts
+- types.ts
+
+FRONTEND ARCHITECTURE:
+admin/src/
+  app/
+    login/page.tsx
+    dashboard/page.tsx
+    live-map/page.tsx
+    heat-view/page.tsx
+    users/page.tsx
+    drivers/page.tsx
+    driver-applications/page.tsx
+    vehicles/page.tsx
+    vehicle-types/page.tsx
+    service-areas/page.tsx
+    ride-requests/page.tsx
+    bids/page.tsx
+    trips/page.tsx
+    payments/page.tsx
+    reviews/page.tsx
+    reports/page.tsx
+    app-content/page.tsx
+    notifications/page.tsx
+    settings/page.tsx
+  src/
+    components/layout/
+      Sidebar.tsx
+      AdminHeader.tsx
+      PageContainer.tsx
+    components/ui/
+    features/
+      dashboard/
+      users/
+      drivers/
+      vehicles/
+      vehicleTypes/
+      serviceAreas/
+      rides/
+      bids/
+      trips/
+      reviews/
+      reports/
+      content/
+      settings/
+    lib/
+      api.ts
+      auth.ts
+      utils.ts
+
+PAGE 1: DASHBOARD
+Create main dashboard screen:
+- top stat cards:
+  - Users
+  - Active Drivers
+  - Inactive Drivers
+  - Total Drivers
+- God’s View card with driver status counters:
+  - Available
+  - Not Available
+  - Way to Pickup
+  - Arrived / Reached Pickup
+  - Way to Dropoff
+- map focused on Morocco
+- Trip Statistics card:
+  - Today / Total toggle
+  - Total Trips
+  - In Process Trips
+  - Completed Trips
+  - Cancelled Trips
+  - donut chart
+- Recent Rides table
+- Admin Earnings card
+
+Endpoints:
+GET /admin/dashboard/stats
+GET /admin/dashboard/trip-statistics?range=today
+GET /admin/dashboard/earnings?range=today
+GET /admin/rides/recent
+
+PAGE 2: USERS
+Create user management screen:
+- page title: Users
+- search filters:
+  - search type: All, Name, Email, Phone
+  - text input
+  - status dropdown
+  - search button
+  - reset button
+  - add user button
+- bulk action dropdown
+- export button
+- table columns:
+  - checkbox
+  - User Name
+  - Email
+  - Sign Up Date
+  - Mobile
+  - Total Rides
+  - Driver Status
+  - Account Status
+  - Actions
+- row actions:
+  - View Profile
+  - Edit User
+  - Block / Unblock
+  - Delete
+  - View Rides
+  - View Bids
+  - View Driver Profile if exists
+
+Endpoints:
+GET /admin/users
+POST /admin/users
+GET /admin/users/:id
+PATCH /admin/users/:id
+PATCH /admin/users/:id/status
+DELETE /admin/users/:id
+POST /admin/users/bulk-action
+GET /admin/users/export
+
+PAGE 3: DRIVERS
+Create driver management screen:
+- page title: Drivers
+- filters:
+  - name/phone/email
+  - status
+  - online/offline
+  - approval status
+- table columns:
+  - checkbox
+  - Driver Name
+  - Phone
+  - Vehicle
+  - Online Status
+  - Approval Status
+  - Rating
+  - Total Trips
+  - Acceptance Rate
+  - Cancellation Rate
+  - Actions
+- actions:
+  - View Driver
+  - View Vehicle
+  - Suspend
+  - Activate
+  - View Trips
+  - View Documents
+
+Endpoints:
+GET /admin/drivers
+GET /admin/drivers/:id
+PATCH /admin/drivers/:id/status
+PATCH /admin/drivers/:id/online-status
+GET /admin/drivers/export
+
+PAGE 4: DRIVER APPLICATIONS
+Create approval screen:
+- pending driver applications table
+- columns:
+  - Applicant
+  - Phone
+  - Vehicle
+  - Documents Status
+  - Applied Date
+  - Status
+  - Actions
+- details drawer:
+  - personal info
+  - documents
+  - vehicle info
+  - approve/reject buttons
+  - rejection reason input
+
+Endpoints:
+GET /admin/driver-applications
+GET /admin/driver-applications/:id
+POST /admin/driver-applications/:id/approve
+POST /admin/driver-applications/:id/reject
+
+PAGE 5: VEHICLES
+Create vehicles screen:
+- filters
+- table columns:
+  - Vehicle
+  - Driver
+  - Plate Number
+  - Type
+  - Seats
+  - Status
+  - Created Date
+  - Actions
+- actions:
+  - View
+  - Edit
+  - Approve
+  - Reject
+  - Delete
+
+Endpoints:
+GET /admin/vehicles
+GET /admin/vehicles/:id
+PATCH /admin/vehicles/:id
+PATCH /admin/vehicles/:id/status
+DELETE /admin/vehicles/:id
+
+PAGE 6: VEHICLE TYPES
+Create vehicle type list screen inspired by screenshots but simplified.
+This is for ride bidding options only.
+Default types:
+- Eco
+- Comfort
+- SUV
+- Luxury
+
+Do not create rental, cargo, moto, pool, intercity.
+
+Table columns:
+- checkbox
+- Type
+- Price Per Km
+- Price Per Min
+- Base Fare
+- Minimum Fare
+- Commission %
+- Person Capacity
+- Display Order
+- Status
+- Action
+
+Add/Edit Vehicle Type form:
+- name
+- description
+- price per km
+- price per minute
+- base fare
+- minimum fare
+- commission percentage
+- cancellation time limit
+- cancellation charge
+- waiting time limit
+- waiting charge
+- in-transit waiting fee per minute
+- person capacity
+- active toggle
+- non-selected image upload
+- selected image upload
+- display order
+
+Endpoints:
+GET /admin/vehicle-types
+POST /admin/vehicle-types
+GET /admin/vehicle-types/:id
+PATCH /admin/vehicle-types/:id
+DELETE /admin/vehicle-types/:id
+
+PAGE 7: SERVICE AREAS / GEO FENCE
+Create geo fence management screen inspired by screenshots.
+This is very important for Morocco coverage.
+
+List screen:
+- page title: Service Areas / Geo Fence
+- filters:
+  - name
+  - country
+  - type
+  - status
+- table columns:
+  - Location Name
+  - Country
+  - Type
+  - Status
+  - Action
+
+Add/Edit screen:
+- location name
+- country default Morocco
+- type:
+  - Service Area
+  - Restricted Area
+  - Pricing Zone
+- active toggle
+- map drawing tool
+- allow drawing polygon
+- allow editing polygon
+- allow deleting polygon
+- store polygon as GeoJSON
+- map should focus Morocco
+- show Biddi coverage as a business layer, not political boundary
+
+Important map requirement:
+For Morocco, allow one service coverage layer that covers the operational area including southern regions as one Biddi service area.
+Do not rely on default political boundaries as business logic.
+Use custom service polygon for availability checks.
+
+Endpoints:
+GET /admin/service-areas
+POST /admin/service-areas
+GET /admin/service-areas/:id
+PATCH /admin/service-areas/:id
+DELETE /admin/service-areas/:id
+
+PAGE 8: LIVE MAP / GOD’S VIEW
+Create live operations map:
+- full width map focused on Morocco
+- left overlay panel
+- status counters:
+  - Available
+  - Not Available
+  - Way to Pickup
+  - Arrived Pickup
+  - Way to Dropoff
+- search driver input
+- driver list with name, phone, car, status
+- map markers:
+  - available driver
+  - busy driver
+  - pickup
+  - dropoff
+  - route line
+- realtime updates using Socket.IO
+
+Endpoints:
+GET /admin/live-map
+WebSocket events:
+admin:driver_location_updated
+admin:trip_status_updated
+admin:new_ride_request
+admin:new_bid
+
+PAGE 9: HEAT VIEW
+Create heat map screen:
+- page title: Heat View
+- map focused Morocco
+- buttons:
+  - Toggle Heatmap
+  - Change Gradient
+  - Change Radius
+  - Change Opacity
+- heat sources:
+  - ride request density
+  - completed trip density
+  - cancelled request density
+- filters:
+  - today
+  - last 7 days
+  - last 30 days
+
+Endpoint:
+GET /admin/heat-view?range=today&type=ride_requests
+
+PAGE 10: RIDE REQUESTS
+Create ride requests screen:
+- filters:
+  - status
+  - rider
+  - date range
+- table columns:
+  - Request ID
+  - Rider
+  - Pickup
+  - Dropoff
+  - Estimated Distance
+  - Estimated Duration
+  - Status
+  - Bids Count
+  - Created At
+  - Actions
+- detail drawer:
+  - map
+  - request info
+  - all bids
+  - selected bid if any
+  - cancel request action
+
+Endpoints:
+GET /admin/ride-requests
+GET /admin/ride-requests/:id
+PATCH /admin/ride-requests/:id/status
+
+PAGE 11: BIDS
+Create bids screen:
+- filters:
+  - active
+  - accepted
+  - rejected
+  - expired
+  - cancelled
+- table columns:
+  - Bid ID
+  - Ride Request
+  - Driver
+  - Amount
+  - ETA
+  - Distance to Pickup
+  - Status
+  - Created At
+  - Actions
+
+Endpoints:
+GET /admin/bids
+GET /admin/bids/:id
+
+PAGE 12: TRIPS
+Create trips screen:
+- filters:
+  - status
+  - rider
+  - driver
+  - date range
+- table columns:
+  - Trip ID
+  - Rider
+  - Driver
+  - Pickup
+  - Dropoff
+  - Final Amount
+  - Payment Status
+  - Trip Status
+  - Created At
+  - Actions
+- detail drawer:
+  - route map
+  - accepted bid
+  - payment
+  - rating
+  - trip timeline
+
+Endpoints:
+GET /admin/trips
+GET /admin/trips/:id
+PATCH /admin/trips/:id/status
+GET /admin/trips/export
+
+PAGE 13: PAYMENTS
+Create payments screen:
+- Biddi MVP is cash-first
+- table columns:
+  - Payment ID
+  - Trip
+  - Rider
+  - Driver
+  - Amount
+  - Admin Commission
+  - Driver Earning
+  - Method
+  - Status
+  - Created At
+- summary cards:
+  - Gross Ride Value
+  - Admin Commission
+  - Driver Earnings
+  - Pending Cash
+
+Endpoints:
+GET /admin/payments
+GET /admin/payments/summary
+
+PAGE 14: REVIEWS
+Create reviews screen inspired by screenshots:
+- tabs:
+  - Driver Reviews
+  - Rider Reviews
+- filters:
+  - search
+  - rating
+  - date range
+- table columns:
+  - Ride Number
+  - Driver Name
+  - Rider Name
+  - Rating
+  - Date
+  - Comment
+  - Action
+- action:
+  - view review
+  - hide/unhide review
+
+Endpoints:
+GET /admin/reviews
+GET /admin/reviews/:id
+PATCH /admin/reviews/:id/visibility
+
+PAGE 15: REPORTS
+Create reports screen:
+- stats cards
+- charts:
+  - trips by day
+  - revenue by day
+  - cancellations by reason
+  - active drivers by day
+- export CSV
+
+Endpoint:
+GET /admin/reports/overview
+
+PAGE 16: APP CONTENT
+Create simple content management replacing old CMS:
+Sections:
+- Banners
+- App Intro Screens
+- Language Labels
+- Email Templates
+- SMS Templates
+- Cancellation Reasons
+- FAQs
+- Help
+
+Banners:
+- list banners
+- upload image
+- placement
+- status
+- display order
+
+Language Labels:
+- key
+- English
+- French
+- Arabic
+- Darija optional
+
+Cancellation Reasons:
+- reason text
+- applies to rider/driver/both
+- status
+
+Endpoints:
+GET /admin/content/banners
+POST /admin/content/banners
+PATCH /admin/content/banners/:id
+DELETE /admin/content/banners/:id
+
+GET /admin/content/labels
+PATCH /admin/content/labels/:id
+
+GET /admin/content/cancellation-reasons
+POST /admin/content/cancellation-reasons
+PATCH /admin/content/cancellation-reasons/:id
+
+PAGE 17: NOTIFICATIONS
+Create notification templates:
+- SMS templates
+- Email templates
+- Push templates
+
+Columns:
+- key
+- type
+- title
+- status
+- action
+
+Endpoints:
+GET /admin/notification-templates
+POST /admin/notification-templates
+PATCH /admin/notification-templates/:id
+
+PAGE 18: SETTINGS
+Create system settings page:
+Sections:
+1. General
+- app name
+- support email
+- support phone
+- default currency MAD
+2. Bidding
+- bid expiration seconds
+- max drivers per request
+- search radius km
+3. Commission
+- default commission %
+4. Cancellation
+- rider cancellation time limit
+- driver cancellation limit
+- cancellation charge
+5. Waiting
+- free waiting minutes
+- waiting charge per minute
+6. Maps
+- default country Morocco
+- default map center
+- map provider
+7. Security
+- admin password change
+
+Endpoint:
+GET /admin/settings
+PATCH /admin/settings
+
+PAGE 19: DRIVER REWARD SETTINGS
+Create simplified reward settings screen:
+- Reward levels:
+  - Silver
+  - Gold
+  - Platinum
+  - Diamond
+- each level has:
+  - level name
+  - minimum trips
+  - minimum rating
+  - max cancellation rate
+  - min acceptance rate
+  - reward amount
+  - image upload
+  - active status
+- Add campaign section optional but keep simple
+
+Endpoints:
+GET /admin/reward-levels
+PATCH /admin/reward-levels/:id
+
+IMPORTANT BUSINESS RULES:
+- This new admin is for bidding rides only.
+- Rider requests a ride.
+- Drivers submit bids.
+- Rider accepts one bid.
+- Trip starts.
+- Trip ends.
+- Payment is cash for MVP.
+- Admin commission is calculated from accepted bid/final amount.
+- Driver can be approved inside admin.
+- Same mobile user can be rider and driver.
+- App mode switch is only available after driver approval.
+
+AUTH:
+Create admin login:
+POST /admin/auth/login
+GET /admin/auth/me
+POST /admin/auth/logout
+
+Use JWT auth middleware for all admin routes.
+
+SEED DATA:
+Create seed script with:
+- 1 super admin
+- 20 users
+- 10 driver profiles
+- 8 vehicles
+- 4 vehicle types
+- 5 service areas in Morocco
+- 20 ride requests
+- 40 bids
+- 10 trips
+- 10 payments
+- 10 ratings
+- 4 reward levels
+
+DEFAULT MOROCCO MAP:
+Default center:
+lat: 31.7917
+lng: -7.0926
+zoom: 5
+
+Use MAD currency everywhere.
+
+IMPORTANT UI QUALITY:
+- all tables must have pagination
+- all tables must have loading skeleton
+- all tables must have empty states
+- all forms must validate with Zod
+- all delete/block actions need confirmation dialog
+- all create/update actions show toast
+- all status values use colored badges
+- all pages use same layout shell
+
+OUTPUT:
+Generate complete runnable code:
+- backend
+- admin frontend
+- Prisma schema
+- migrations
+- seed script
+- README setup instructions
+- .env.example files
+
+Do not overbuild unnecessary features.
+Keep code clean, modular, and easy to maintain.

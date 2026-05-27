@@ -1,0 +1,2 @@
+DROP INDEX "referral_earnings_ride_level_unique";--> statement-breakpoint
+CREATE UNIQUE INDEX "referral_earnings_ride_level_from_unique" ON "referral_earnings" USING btree ("ride_id","level","from_user_id");
