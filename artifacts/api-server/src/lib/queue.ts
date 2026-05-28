@@ -2,7 +2,7 @@ import { Queue, Worker, type Processor } from "bullmq";
 import { getRedis } from "./redis";
 import { logger } from "./logger";
 
-export const BIDDING_EXPIRY_QUEUE = "biddi:bidding-expiry";
+export const BIDDING_EXPIRY_QUEUE = "biddi-bidding-expiry";
 export const BIDDING_EXPIRY_JOB_NAME = "sweep";
 
 let biddingExpiryQueue: Queue | null = null;
