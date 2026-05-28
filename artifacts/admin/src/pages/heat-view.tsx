@@ -317,11 +317,22 @@ export default function HeatViewPage() {
       const googleReady =
         typeof window !== "undefined" &&
         !!(window as unknown as { google?: { maps?: unknown } }).google?.maps;
+      let googleAttached = false;
       if (currentKey && googleReady) {
-        const googleLayer = L.gridLayer.googleMutant({ type: "roadmap", maxZoom: 20 });
-        (googleLayer as unknown as L.Layer).addTo(map);
-        baseTileLayerRef.current = googleLayer as unknown as L.Layer;
-      } else {
+        try {
+          const googleLayer = L.gridLayer.googleMutant({ type: "roadmap", maxZoom: 20 });
+          (googleLayer as unknown as L.Layer).addTo(map);
+          baseTileLayerRef.current = googleLayer as unknown as L.Layer;
+          googleAttached = true;
+        } catch (err) {
+          setGoogleTilesFailed(true);
+          setGoogleTilesFailureMessage((prev) =>
+            prev ??
+            `Google Maps tile layer failed to initialise (${(err as Error).message}) — showing a fallback basemap.`,
+          );
+        }
+      }
+      if (!googleAttached) {
         if (currentKey && !googleReady) {
           setGoogleTilesFailed(true);
           setGoogleTilesFailureMessage((prev) =>
@@ -360,7 +371,12 @@ export default function HeatViewPage() {
       (window as any).L = L;
       await import("leaflet.heat");
       if (currentKey) {
-        await import("leaflet.gridlayer.googlemutant");
+        const mod = await import("leaflet.gridlayer.googlemutant");
+        // v0.16.0 ESM source registers the factory but forgets to attach the
+        // class to L.GridLayer.GoogleMutant — do it ourselves so the factory
+        // `L.gridLayer.googleMutant(...)` actually finds a constructor.
+        (L.GridLayer as unknown as { GoogleMutant?: unknown }).GoogleMutant =
+          mod.default;
       }
       if (!mapContainerRef.current || mapRef.current) return;
       const map = initMap(mapContainerRef.current);

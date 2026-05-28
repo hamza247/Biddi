@@ -957,13 +957,22 @@ export default function LiveMapPage() {
       const googleReady =
         typeof window !== "undefined" &&
         !!(window as unknown as { google?: { maps?: unknown } }).google?.maps;
+      let googleAttached = false;
       if (useGoogle && googleReady) {
-        const g = L.gridLayer.googleMutant({ type: "roadmap", maxZoom: 20 });
-        (g as unknown as L.Layer).addTo(map);
-        baseTileLayerRef.current = g as unknown as L.Layer;
-      } else {
-        // If we wanted Google but the global never showed up, surface the
-        // failure so the dismissible banner can appear.
+        try {
+          const g = L.gridLayer.googleMutant({ type: "roadmap", maxZoom: 20 });
+          (g as unknown as L.Layer).addTo(map);
+          baseTileLayerRef.current = g as unknown as L.Layer;
+          googleAttached = true;
+        } catch (err) {
+          setGoogleTilesFailed(true);
+          setGoogleTilesFailureMessage((prev) =>
+            prev ??
+            `Google Maps tile layer failed to initialise (${(err as Error).message}) — showing a fallback basemap.`,
+          );
+        }
+      }
+      if (!googleAttached) {
         if (useGoogle && !googleReady) {
           setGoogleTilesFailed(true);
           setGoogleTilesFailureMessage((prev) =>
@@ -989,7 +998,12 @@ export default function LiveMapPage() {
       if (cancelled || !mapContainerRef.current || mapRef.current) return;
       (window as unknown as { L?: typeof L }).L = L;
       if (useGoogle) {
-        await import("leaflet.gridlayer.googlemutant");
+        const mod = await import("leaflet.gridlayer.googlemutant");
+        // v0.16.0 ESM source registers the factory but forgets to attach the
+        // class to L.GridLayer.GoogleMutant — do it ourselves so the factory
+        // `L.gridLayer.googleMutant(...)` actually finds a constructor.
+        (L.GridLayer as unknown as { GoogleMutant?: unknown }).GoogleMutant =
+          mod.default;
       }
       if (cancelled || !mapContainerRef.current || mapRef.current) return;
       const container = mapContainerRef.current as HTMLDivElement & {
