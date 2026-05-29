@@ -54,7 +54,8 @@ const config: ExpoConfig = {
   icon: "./assets/images/icon.png",
   scheme: "biddi",
   userInterfaceStyle: "light",
-  newArchEnabled: false,
+  newArchEnabled: true,
+  jsEngine: "jsc",
   splash: {
     image: "./assets/images/icon.png",
     resizeMode: "contain",
