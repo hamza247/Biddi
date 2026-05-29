@@ -10,7 +10,6 @@ const googleMapsKeyAndroid = process.env.GOOGLE_API_ANDROID_KEY ?? "";
 // platform Google Maps key is missing the map falls back to the raw
 // OpenStreetMap tile server inside the Leaflet web fallback.
 
-const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? "";
 
 /**
  * Notification sound files written by `pnpm --filter biddi run sync-sounds`.
@@ -18,7 +17,7 @@ const easProjectId = process.env.EXPO_PUBLIC_EAS_PROJECT_ID ?? "";
  * the iOS bundle and android/app/src/main/res/raw/ at build time.
  */
 const RESERVED_PRESET_SOUND_FILES = [
-  "./assets/sounds/default.wav",
+  "./assets/sounds/biddi_default.wav",
   "./assets/sounds/chime.wav",
   "./assets/sounds/ping.wav",
   "./assets/sounds/ringtone.wav",
@@ -50,20 +49,24 @@ const allNotificationSounds = [
 const config: ExpoConfig = {
   name: "Biddi",
   slug: "biddi",
-  version: "1.0.0",
+  version: "2.2.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "biddi",
   userInterfaceStyle: "light",
-  newArchEnabled: true,
+  newArchEnabled: false,
   splash: {
     image: "./assets/images/icon.png",
     resizeMode: "contain",
     backgroundColor: "#3819A6",
   },
   ios: {
+    bundleIdentifier: "com.hamza.customer",
     supportsTablet: false,
-    config: googleMapsKeyIos ? { googleMapsApiKey: googleMapsKeyIos } : undefined,
+    config: {
+      usesNonExemptEncryption: false,
+      ...(googleMapsKeyIos ? { googleMapsApiKey: googleMapsKeyIos } : {}),
+    },
     infoPlist: {
       NSMicrophoneUsageDescription: "Biddi needs microphone access to record voice messages during trips.",
       NSSpeechRecognitionUsageDescription: "Biddi uses speech recognition so you can book rides by voice.",
@@ -72,6 +75,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
+    package: "product.customer.biddi",
     permissions: ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION", "RECORD_AUDIO", "READ_MEDIA_IMAGES", "READ_EXTERNAL_STORAGE"],
     config: googleMapsKeyAndroid
       ? { googleMaps: { apiKey: googleMapsKeyAndroid } }
@@ -135,7 +139,7 @@ const config: ExpoConfig = {
   ],
   extra: {
     eas: {
-      projectId: easProjectId || undefined,
+      projectId: "792d7801-11c5-4493-9646-be191c0daba8",
     },
   },
   experiments: {
