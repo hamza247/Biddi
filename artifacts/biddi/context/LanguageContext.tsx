@@ -1,4 +1,3 @@
-import * as Updates from "expo-updates";
 import React, { createContext, useCallback, useContext, useState } from "react";
 import { Alert, I18nManager } from "react-native";
 
@@ -37,25 +36,6 @@ export function LanguageProvider({
       Alert.alert(
         i18n.t("language.restartRequired"),
         i18n.t("language.restartMessage"),
-        [
-          {
-            text: i18n.t("language.reloadLater"),
-            style: "cancel",
-          },
-          {
-            text: i18n.t("language.reloadNow"),
-            onPress: async () => {
-              try {
-                await Updates.reloadAsync();
-              } catch {
-                Alert.alert(
-                  i18n.t("language.restartRequired"),
-                  i18n.t("language.reloadFailed"),
-                );
-              }
-            },
-          },
-        ],
       );
     }
   }, []);
