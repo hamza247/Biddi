@@ -128,20 +128,28 @@ export default function RootLayout() {
           <KeyboardProvider>
             <LanguageProvider initialLanguage={initialLanguage}>
               <QueryClientProvider client={queryClient}>
-              <StripeProvider
-                publishableKey={
-                  process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ""
-                }
-                merchantIdentifier="merchant.com.biddi"
-              >
-              <AppProvider>
-                <View style={{ flex: 1 }}>
-                  <StatusBar style="dark" />
-                  <RootLayoutNav />
-                  <ReconnectingBanner />
-                </View>
-              </AppProvider>
-              </StripeProvider>
+              {process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ? (
+                <StripeProvider
+                  publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+                  merchantIdentifier="merchant.com.biddi"
+                >
+                  <AppProvider>
+                    <View style={{ flex: 1 }}>
+                      <StatusBar style="dark" />
+                      <RootLayoutNav />
+                      <ReconnectingBanner />
+                    </View>
+                  </AppProvider>
+                </StripeProvider>
+              ) : (
+                <AppProvider>
+                  <View style={{ flex: 1 }}>
+                    <StatusBar style="dark" />
+                    <RootLayoutNav />
+                    <ReconnectingBanner />
+                  </View>
+                </AppProvider>
+              )}
               </QueryClientProvider>
             </LanguageProvider>
           </KeyboardProvider>
