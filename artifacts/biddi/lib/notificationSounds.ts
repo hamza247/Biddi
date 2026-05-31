@@ -56,7 +56,7 @@ interface ActiveResponse {
  * fallback when uploaded sound resolution fails.
  */
 const RESERVED_PRESETS: Record<string, AVPlaybackSource> = {
-  default: require("../assets/sounds/default.wav"),
+  default: require("../assets/sounds/biddi_default.wav"),
   chime: require("../assets/sounds/chime.wav"),
   ping: require("../assets/sounds/ping.wav"),
   ringtone: require("../assets/sounds/ringtone.wav"),

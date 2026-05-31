@@ -554,6 +554,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // (app launched from a killed state by tapping a notification) via
   // getLastNotificationResponseAsync which is checked once on mount.
   useEffect(() => {
+    // Skip on iOS until APNs key is registered with EAS — under New Arch
+    // these bridges throw a synchronous NSException that crashes Hermes
+    // before any JS .catch can run.
+    if (Platform.OS === "ios" && !process.env.EXPO_PUBLIC_APNS_CONFIGURED) return;
+
     const handleNotificationData = (data: Record<string, unknown> | undefined) => {
       if (data?.type === "driver_rejected") {
         router.push("/reupload-docs");
@@ -580,6 +585,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         if (Platform.OS === "web") return;
+        // Skip iOS push until APNs key is registered with EAS — otherwise
+        // getExpoPushTokenAsync throws NSException and crashes Hermes.
+        if (Platform.OS === "ios" && !process.env.EXPO_PUBLIC_APNS_CONFIGURED) return;
         const { status: existing } = await Notifications.getPermissionsAsync();
         let finalStatus = existing;
         if (existing !== "granted") {
