@@ -18,7 +18,6 @@ import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useState } from "react";
 import { I18nManager, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -125,7 +124,6 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <KeyboardProvider>
             <LanguageProvider initialLanguage={initialLanguage}>
               <QueryClientProvider client={queryClient}>
               {process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ? (
@@ -152,7 +150,6 @@ export default function RootLayout() {
               )}
               </QueryClientProvider>
             </LanguageProvider>
-          </KeyboardProvider>
         </GestureHandlerRootView>
       </ErrorBoundary>
     </SafeAreaProvider>
